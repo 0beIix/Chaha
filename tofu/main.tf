@@ -1,3 +1,10 @@
+# Deploy by running in chaha folder
+# tofu init
+# tofu plan -var-file="secrets.tfvars"
+# tofu apply -var-file="secrets.tfvars"
+
+# !!! tofu destroy -var-file="secrets.tfvars" !!!
+
 # Wazuh Deployment
 module "wazuh_nodes" {
   source   = "./modules/wazuh_node"
