@@ -1,0 +1,1 @@
+{"Modules":[{"Key":"","Source":"","Dir":"."},{"Key":"sensor_nodes","Source":"./modules/sensor_node","Dir":"modules/sensor_node"},{"Key":"wazuh_nodes","Source":"./modules/wazuh_node","Dir":"modules/wazuh_node"}]}

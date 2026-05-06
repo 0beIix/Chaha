@@ -1,0 +1,14 @@
+wazuh_nodes = {
+   # AIO
+   "Wazuh-AIO" = { vm_id = 311, cores = 4, memory = 8192, disk = 64 }
+
+   # wazuh distributed
+   # "Indexer-1" = { vm_id = 321, cores = 2, memory = 6144, disk = 64 }
+   # "Manager-1" = { vm_id = 322, cores = 2, memory = 6144, disk = 32 }
+   # "Dashboard-1" = { vm_id = 323, cores = 2, memory = 6144, disk = 32 }
+ }
+
+sensor_nodes = {
+    # Sensor
+  "Sensor" = { vm_id = 312, cores = 4, memory = 4096, disk = 64 }
+}
