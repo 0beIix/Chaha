@@ -1,0 +1,26 @@
+# --- OpenTofu / Terraform ---
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+.terraform.tfstate.lock.info
+
+# --- Secrets and Variables ---
+# Ignorar todos los archivos de variables excepto los que definen la estructura
+*.tfvars
+*.tfvars.json
+
+# Excepción: Queremos mantener chaha.auto.tfvars para que otros vean los specs de los nodos
+!chaha.auto.tfvars
+
+# Ignorar específicamente el archivo de secretos
+secrets.tfvars
+
+# --- Credentials and System ---
+.proxmox-api
+.env
+*.log
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
