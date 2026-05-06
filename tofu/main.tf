@@ -15,6 +15,8 @@ module "wazuh_nodes" {
     cores    = each.value.cores
     memory   = each.value.memory
     disk     = each.value.disk
+    vm_ip    = each.value.ip
+    vm_gw    = each.value.gw
     ssh_public_key = var.ssh_public_key
 }
 
@@ -28,6 +30,8 @@ module "sensor_nodes" {
     cores    = each.value.cores
     memory   = each.value.memory
     disk     = each.value.disk  
+    vm_ip    = each.value.ip
+    vm_gw    = each.value.gw
     ssh_public_key = var.ssh_public_key
     sniff_bridge   = var.sniff_bridge
 }

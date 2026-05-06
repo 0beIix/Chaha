@@ -4,6 +4,8 @@ variable "wazuh_nodes" {
     cores  = number
     memory = number
     disk   = number
+    ip     = string
+    gw     = string
   }))
   description = "All Wazuh nodes with resource specs"
 }
@@ -14,6 +16,8 @@ variable "sensor_nodes" {
     cores  = number
     memory = number
     disk   = number
+    ip     = string
+    gw     = string
   }))
   description = "All Sensor nodes with resource specs"
 }

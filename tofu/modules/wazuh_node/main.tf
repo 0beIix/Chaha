@@ -20,8 +20,8 @@ resource "proxmox_virtual_environment_vm" "node" {
 
     ip_config {
       ipv4 {
-        # or static config
-        address = "dhcp"
+        address = var.vm_ip  
+        gateway = var.vm_gw 
       }
     }
   }

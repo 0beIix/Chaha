@@ -27,7 +27,8 @@ resource "proxmox_virtual_environment_vm" "node" {
 
     ip_config {
       ipv4 {
-        address = "dhcp" # Only assigns to the first interface (eth0)
+        address = var.vm_ip  
+        gateway = var.vm_gw 
       }
     }
   }

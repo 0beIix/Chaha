@@ -35,10 +35,15 @@ variable "vm_user" {
   default = "obelix"
 }
 
-# variable "vm_password" {
-#   type      = string
-#   sensitive = true # This hides the password in the console output/logs
-# }
+variable "vm_ip" {
+  type        = string
+  description = "IP estática con máscara (ej: 192.168.1.50/24)"
+}
+
+variable "vm_gw" {
+  type        = string
+  description = "Gateway de la red"
+}
 
 variable "ssh_public_key" {
   type        = string
