@@ -38,11 +38,9 @@ chaha
 
 Ejecutar el script en el shell de Proxmox. Este paso deja el hipervisor listo para recibir órdenes de OpenTofu.
 
-[!IMPORTANT]
-Editar las variables de la sección "Variables Editables" dentro del script antes de ejecutar.    
+> [!IMPORTANT]
+> Editar las variables de la sección "Variables Editables" dentro del script antes de ejecutar.    
     
-    > [!Info] Importante
-    >  Definir las variables en la primera sección antes de ejecutar
     
 - Genera llaves SSH y configura accesos.
 - Descarga la imagen Cloud-Init y crea la plantilla base.
