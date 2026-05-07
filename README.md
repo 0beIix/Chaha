@@ -2,33 +2,32 @@
 Inspirado en el Chahã del Chaco, este sistema actúa como centinela digital: monitorea la red en tiempo real, detecta anomalías y emite alertas inmediatas ante intrusos, permitiendo una respuesta rápida y coordinada.
 
 ### Estructura del proyecto
+```
 chaha
-├── ansible                         <--- Configura las VMs
-│   ├── group_vars
+├── ansible/                # Configuración de software en las VMs
+│   ├── group_vars/         # Variables compartidas por grupos
 │   │   └── sensor_nodes.yml
-│   ├── inventory
-│   │   └── hosts.ini               <--- Especificar VMs a configurar
-│   ├── roles
+│   ├── inventory/
+│   │   └── hosts.ini       # IPs y acceso SSH de los nodos
+│   ├── roles/              # Lógica de instalación (Suricata, Zeek, Wazuh)
 │   │   ├── suricata
 │   │   ├── wazuh-agent
 │   │   ├── wazuh-server
 │   │   └── zeek
-│   └── site.yml                    <--- Playbook principal
-├── scripts                         <--- Setup para Proxmox y la VM maestra
+│   └── site.yml            # Playbook maestro de Ansible
+├── scripts/                # Scripts de preparación inicial
 │   ├── 1-preparar-proxmox.sh
 │   └── 2-preparar-master-vm.sh
-└── tofu                            <--- Crea las VM en Proxmox
-    ├── chaha.auto.tfvars           <--- Especificar dimenciones de las VMs
-    ├── main.tf                     <--- Playbook principal
-    ├── modules
+└── tofu/                   # Orquestación de infraestructura (IaC)
+    ├── chaha.auto.tfvars   # Definición de hardware (vCPU, RAM, Disco)
+    ├── main.tf             # Despliegue de módulos
+    ├── modules/            # Blueprints de las VMs
     │   ├── sensor_node
     │   └── wazuh_node
     ├── providers.tf
-    ├── secrets.tfvars
-    ├── terraform.tfstate
-    ├── terraform.tfstate.backup
+    ├── secrets.tfvars      # Credenciales (Ignorado por Git)
     └── variables.tf
-
+```
 ### Requicitos iniciales
 1. Tener un servidor fisico con dos puertos de red y proxmox instalado
 2. Tener un switch gestionable para crear un puerto de monitoreo (port mirror)
