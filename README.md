@@ -29,34 +29,47 @@ chaha
     └── variables.tf
 ```
 ### Requicitos iniciales
-1. Tener un servidor fisico con dos puertos de red y proxmox instalado
-2. Tener un switch gestionable para crear un puerto de monitoreo (port mirror)
+1. Servidor físico con Proxmox instalado y al menos dos puertos de red.
+2. Switch gestionable para configurar un puerto de monitoreo (Port Mirror/SPAN).
+3. Acceso a internet para descarga de paquetes y reglas.
 
 ### Operativa Breve
-1. En el servidor de Proxmox ejecutar el script '1-preparar-proxmox.sh'
+1. Preparación del Host (Proxmox)
+
+Ejecutar el script en el shell de Proxmox. Este paso deja el hipervisor listo para recibir órdenes de OpenTofu.
+
+[!IMPORTANT]
+Editar las variables de la sección "Variables Editables" dentro del script antes de ejecutar.    
+    
     > [!Info] Importante
     >  Definir las variables en la primera sección antes de ejecutar
-    1. Crea keys para SSH
-    2. Descarga dependencias
-    3. Descarga Imagen CLOUD-INIT y crea un template
-    4. Crea el usuario necesario y API key y configura permisos 
-    5. Configura la red (VMBR1)
-    6. Crea la VM maestra en donde se sigue
-2. En la nueva VM maestra ejecutar 2-preparar-master-vm.sh
-    1. Instala dependencias necesarias
-    2. Instala OpenTofu y Ansible
-    3. Clona este repositorio
-3. Entrar en el directorio 'tofu'
-> [!Info] Configurar Variables
-> Configurar variables en chaha.auto.tfvars
-Para ejecutar y crear las VMs ejecutar
+    
+- Genera llaves SSH y configura accesos.
+- Descarga la imagen Cloud-Init y crea la plantilla base.
+- Crea el usuario API terraform@pve con permisos de administrador.
+- Configura el bridge vmbr1 (modo promiscuo) para sniffing.
+- Despliega la VM Maestra desde donde se gestionará el resto.
+
+2. Preparación de la VM Maestra
+
+- Dentro de la nueva VM creada, ejecutar 2-preparar-master-vm.sh:
+- Instala OpenTofu y Ansible.
+- Clona este repositorio para iniciar la gestión.
+
+3. Despliegue de Infraestructura (OpenTofu)
+
+Configurar las dimensiones en chaha.auto.tfvars e IPs.
+
 ```bash
 cd ~/chaha/tofu
 tofu init
 tofu plan -var-file=secrets.tfvars
 tofu apply -var-file=secrets.tfvars
 ```
-4. Entrar en el directorio 'ansible'
+4. Configuración del Stack (Ansible)
+
+Una vez creadas las VMs, desplegar el software de seguridad:
+
 ```bash
 cd ~/chaha/ansible
 # Primero probamos conexión
