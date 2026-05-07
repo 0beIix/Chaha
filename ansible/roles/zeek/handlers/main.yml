@@ -1,0 +1,6 @@
+---
+- name: desplegar zeek
+  shell: |
+    /opt/zeek/bin/zeekctl install
+    /opt/zeek/bin/zeekctl stop
+    /opt/zeek/bin/zeekctl start

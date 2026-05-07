@@ -1,0 +1,9 @@
+---
+# Interfaz que Tofu conectó a vmbr1 (usualmente eth1)
+sniff_interface: "eth1"
+
+# IP del manager (debe coincidir con la de wazuh_nodes en el host.ini)
+wazuh_manager_ip: "192.168.100.41"
+
+# Red a monitorear por Suricata
+home_net: "192.168.100.0/24"

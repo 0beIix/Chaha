@@ -1,0 +1,59 @@
+---
+- name: Instalar Suricata y dependencias
+  apt:
+    name: 
+      - suricata
+      - jq
+      - python3-pip
+    state: present
+    update_cache: yes
+
+- name: Detener Suricata para configurar
+  service:
+    name: suricata
+    state: stopped
+
+- name: Optimizar Interfaz de Monitoreo (Desactivar Offloading)
+  shell: |
+    ethtool -K {{ sniff_interface }} gro off lro off tso off gso off
+  ignore_errors: yes
+  # Esto asegura que Suricata vea los paquetes originales, no "reensamblados" por la NIC.
+
+- name: Desplegar configuración de Suricata (suricata.yaml)
+  template:
+    src: suricata.yaml.j2
+    dest: /etc/suricata/suricata.yaml
+  notify: restart suricata
+
+- name: Actualizar reglas de Suricata (ET Open)
+  command: suricata-update
+  register: update_result
+  changed_when: "'No changes' not in update_result.stdout"
+
+- name: Asegurar que Suricata inicie al boot
+  service:
+    name: suricata
+    enabled: yes
+    state: started
+
+- name: Configurar modo promiscuo persistente
+  copy:
+    dest: /etc/systemd/system/promisc-interface.service
+    content: |
+      [Unit]
+      Description=Modo Promiscuo en {{ sniff_interface }}
+      After=network.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/sbin/ip link set dev {{ sniff_interface }} promisc on
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Habilitar servicio promisc
+  systemd:
+    name: promisc-interface
+    enabled: yes
+    state: started

@@ -1,0 +1,58 @@
+# --- Continuación de suricata.yaml.j2 ---
+
+# Configuración de salida (Logs)
+outputs:
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      # Wazuh necesita que estos tipos de eventos estén habilitados
+      types:
+        - alert:
+            payload: yes             # Útil para análisis forense
+            payload-printable: yes
+            packet: yes
+            http: yes
+        - http:
+            extended: yes
+        - dns:
+            query: yes
+            answer: yes
+        - tls:
+            extended: yes
+        - files:
+            force-hash: [md5, sha256]
+        - ssh:
+        - stats:
+            totals: yes
+            threads: no
+
+# Configuración de captura AF-PACKET (Lo que ya teníamos, optimizado)
+af-packet:
+  - interface: {{ sniff_interface }}
+    cluster-id: 99
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+
+# Definición de reglas (Suricata-update las maneja aquí)
+default-rule-path: /var/lib/suricata/rules
+rule-files:
+  - suricata.rules
+
+# Configuración de detección
+detect-engine:
+  - profile: medium # Ajustar según RAM (low, medium, high)
+  - sgh-mpm-context: auto
+  - inspection-recursion-limit: 3000
+
+# Logging del sistema
+logging:
+  default-log-level: notice
+  outputs:
+  - console:
+      enabled: yes
+  - file:
+      enabled: yes
+      filename: suricata.log

@@ -1,0 +1,48 @@
+---
+- name: Instalar dependencias de Wazuh Agent
+  apt:
+    name: [curl, apt-transport-https, lsb-release, gnupg2]
+    state: present
+
+- name: Añadir llave GPG de Wazuh
+  apt_key:
+    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    state: present
+
+- name: Añadir repositorio de Wazuh
+  apt_repository:
+    repo: "deb https://packages.wazuh.com/4.x/apt/ stable main"
+    state: present
+
+- name: Instalar Wazuh Agent
+  apt:
+    name: wazuh-agent
+    state: present
+    update_cache: yes
+
+- name: Configurar ossec.conf (Integración Suricata/Zeek)
+  template:
+    src: ossec.conf.j2
+    dest: /var/ossec/etc/ossec.conf
+    owner: root
+    group: ossec
+    mode: '0644'
+  notify: restart wazuh-agent
+
+- name: Habilitar e iniciar Wazuh Agent
+  service:
+    name: wazuh-agent
+    enabled: yes
+    state: started
+
+- name: Dar permisos a Wazuh para leer logs de Suricata
+  user:
+    name: ossec
+    groups: suricata
+    append: yes
+
+- name: Ajustar permisos de la carpeta de logs de Zeek
+  file:
+    path: /opt/zeek/logs/current/
+    mode: '0755'
+    recurse: yes

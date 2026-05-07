@@ -1,0 +1,35 @@
+---
+## 1. PREPARACIÓN GLOBAL
+- name: Preparar dependencias en todos los nodos
+  hosts: all
+  become: yes
+  tasks:
+    - name: Actualizar cache de APT
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+## 2. DESPLIEGUE DEL NODO CENTRAL (MASTER)
+- name: Instalar y Configurar Wazuh Master AIO
+  hosts: wazuh_nodes
+  become: yes
+  roles:
+    - wazuh-server
+
+## 3. DESPLIEGUE DE SENSORES (IDS/NSM)
+- name: Instalar y Configurar Sensores de Red
+  hosts: sensor_nodes
+  become: yes
+  roles:
+    - suricata
+    - zeek
+    - wazuh-agent
+
+## 4. VERIFICACIÓN FINAL
+- name: Resumen del despliegue
+  hosts: wazuh_nodes
+  become: yes
+  tasks:
+    - name: Mostrar ubicación de contraseñas
+      debug:
+        msg: "El despliegue ha finalizado. Puedes encontrar las contraseñas del Dashboard en /root/wazuh-passwords.txt en el servidor Master."

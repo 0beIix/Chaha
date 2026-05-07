@@ -1,0 +1,33 @@
+---
+- name: Añadir repositorio de Zeek
+  apt_repository:
+    repo: "deb http://download.opensuse.org/repositories/network:/zeek/xUbuntu_24.04/ /"
+    state: present
+    update_cache: yes
+
+- name: Importar llave del repositorio Zeek
+  apt_key:
+    url: "https://download.opensuse.org/repositories/network:/zeek/xUbuntu_24.04/Release.key"
+    state: present
+
+- name: Instalar Zeek
+  apt:
+    name: zeek-lts  # Usamos la versión Long Term Support
+    state: present
+
+- name: Configurar interfaz en node.cfg
+  template:
+    src: node.cfg.j2
+    dest: /opt/zeek/etc/node.cfg
+  notify: desplegar zeek
+
+- name: Configurar redes locales en networks.cfg
+  template:
+    src: networks.cfg.j2
+    dest: /opt/zeek/etc/networks.cfg
+  notify: desplegar zeek
+
+- name: Añadir Zeek al PATH
+  lineinfile:
+    path: /home/{{ ansible_user }}/.bashrc
+    line: 'export PATH=$PATH:/opt/zeek/bin'

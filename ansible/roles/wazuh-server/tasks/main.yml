@@ -1,0 +1,23 @@
+---
+- name: Descargar script de instalación de Wazuh
+  get_url:
+    url: https://packages.wazuh.com/4.x/wazuh-install.sh
+    dest: /tmp/wazuh-install.sh
+    mode: '0755'
+
+- name: Instalar Wazuh AIO (All-in-One)
+  shell: bash /tmp/wazuh-install.sh --wazuh-server wazuh-1 --start-cluster
+  args:
+    creates: /var/ossec/bin/ossec-control 
+  # El 'creates' evita que se reinstale si ya existe
+
+- name: Generar credenciales del Dashboard
+  shell: bash /tmp/wazuh-install.sh --tarball
+  args:
+    creates: /root/wazuh-passwords.txt
+
+- name: Extraer contraseñas para el administrador
+  shell: tar -O -xf wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt > /root/wazuh-passwords.txt
+  args:
+    chdir: /root
+    creates: /root/wazuh-passwords.txt

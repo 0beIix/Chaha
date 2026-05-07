@@ -1,0 +1,43 @@
+<ossec_config>
+  <client>
+    <server>
+      <address>{{ wazuh_manager_ip }}</address>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+    </server>
+    <config-profile>ubuntu, 24.04</config-profile>
+  </client>
+
+  <!-- RECOLECCIÓN DE LOGS DE SURICATA -->
+  <localfile>
+    <log_format>json</log_format>
+    <location>/var/log/suricata/eve.json</location>
+  </localfile>
+
+  <!-- RECOLECCIÓN DE LOGS DE ZEEK (Protocolos clave) -->
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/opt/zeek/logs/current/conn.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/opt/zeek/logs/current/dns.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/opt/zeek/logs/current/http.log</location>
+  </localfile>
+
+  <!-- LOGS DEL SISTEMA -->
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/auth.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/log/syslog</location>
+  </localfile>
+</ossec_config>
