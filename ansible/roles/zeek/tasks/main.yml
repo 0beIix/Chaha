@@ -31,3 +31,9 @@
   lineinfile:
     path: /home/{{ ansible_user }}/.bashrc
     line: 'export PATH=$PATH:/opt/zeek/bin'
+
+- name: Configurar Cron para rotar logs de Zeek cada hora
+  cron:
+    name: "Zeek Log Cron"
+    minute: "0"
+    job: "/opt/zeek/bin/zeekctl cron"
