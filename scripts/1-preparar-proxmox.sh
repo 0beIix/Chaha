@@ -230,22 +230,27 @@ if [ ! -f "$PATH_TEMP_IMG" ]; then
     wget -q "$IMG_URL" -O "$PATH_TEMP_IMG"
 fi
 
-### CREAR VM ###
-msg_info "[*] Creando VM $TEMPLATE_VMID…"
-qm create $TEMPLATE_VMID \
-  --name $TEMPLATE_VM_NAME \
-  --memory $TEMPLATE_MEMORY \
-  --cores $TEMPLATE_CORES \
-  --net0 virtio,bridge=$TEMPLATE_BRIDGE
+### VERIFICAR SI LA VM YA EXISTE ###
+if qm status $TEMPLATE_VMID >/dev/null 2>&1; then
+    msg_ok "[!] La VM $TEMPLATE_VMID ya existe. Saltando creación de template."
+else
+    ### CREAR VM ###
+    msg_info "[*] Creando VM $TEMPLATE_VMID..."
+    qm create $TEMPLATE_VMID \
+      --name "$TEMPLATE_VM_NAME" \
+      --memory $TEMPLATE_MEMORY \
+      --cores $TEMPLATE_CORES \
+      --net0 virtio,bridge=$TEMPLATE_BRIDGE
 
-### IMPORTAR DISCO ###
-msg_info "[*] Importando disco…"
-qm importdisk $TEMPLATE_VMID "$PATH_TEMP_IMG" $TEMPLATE_STORAGE
+    ### IMPORTAR DISCO ###
+    msg_info "[*] Importando disco..."
+    qm importdisk $TEMPLATE_VMID "$PATH_TEMP_IMG" $TEMPLATE_STORAGE
+    DISK_PATH="${TEMPLATE_STORAGE}:vm-$TEMPLATE_VMID-disk-0"
+
+fi
 
 ### LIMPIEZA ###
-rm -f "$PATH_TEMP_IMG"
-
-DISK_PATH="${TEMPLATE_STORAGE}:vm-$TEMPLATE_VMID-disk-0"
+# rm -f "$PATH_TEMP_IMG"
 
 ### CONFIGURAR HARDWARE ###
 msg_info "[*] Ajustando hardware…"
