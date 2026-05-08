@@ -289,7 +289,7 @@ msg_info "[*] Preparando Proxmox para IaC con Terraform..."
 
 ### Detectar automáticamente la IP de gestión de Proxmox
 PROXMOX_IP=$(hostname -I | awk '{print $1}')
-echo "[*] IP de Proxmox detectada: $PROXMOX_IP"
+msg_ok "[*] IP de Proxmox detectada: $PROXMOX_IP"
 
 
 ##########################
@@ -319,29 +319,36 @@ msg_info "Asignando permisos de Administrador al grupo $API_GROUP"
 pveum aclmod / -roles Administrator -groups "$API_GROUP"
 
 # 4. Configurar Token API
-msg_info "Configurando token API..."
+msg_info "Configurando token API"
 
-# Verificamos si el token existe antes de intentar manipularlo
-TOKEN_EXISTS=$(pveum user token list "$API_USER" --output-format json | jq -e ".[] | select(.tokenid == \"$API_TOKEN_NAME\")" >/dev/null 2>&1 && echo "yes" || echo "no")
-
-if [ "$TOKEN_EXISTS" == "yes" ]; then
-    msg_ok "El token $API_TOKEN_NAME ya existe. Rotando para obtener nuevo Secret..."
-    pveum user token delete "$API_USER" "$API_TOKEN_NAME"
+# Borrar si existe (simplificado)
+if pveum user token list "$API_USER" --output-format json | jq -e ".[] | select(.tokenid == \"$API_TOKEN_NAME\")" >/dev/null 2>&1; then
+    pveum user token delete "$API_USER" "$API_TOKEN_NAME" >/dev/null 2>&1
 fi
 
-# CREACIÓN ÚNICA (Solo una vez)
+# Intentar creación y capturar salida
 TOKEN_OUTPUT=$(pveum user token add "$API_USER" "$API_TOKEN_NAME" --privsep 1 --output-format json)
-TOKEN_ID=$(echo "$TOKEN_OUTPUT" | jq -r '.fullid')
-TOKEN_SECRET=$(echo "$TOKEN_OUTPUT" | jq -r '.value')
 
-# 5. Asignar permisos al token (Usamos 'acl modify' o 'aclmod')
+# Extraer valores asegurándonos de que no sean null
+TOKEN_ID=$(echo "$TOKEN_OUTPUT" | jq -r '.fullid // empty')
+TOKEN_SECRET=$(echo "$TOKEN_OUTPUT" | jq -r '.value // empty')
+
+# VALIDACIÓN CRÍTICA: Si TOKEN_ID está vacío, el script debe detenerse antes del error 400
+if [ -z "$TOKEN_ID" ] || [ "$TOKEN_ID" == "null" ]; then
+    msg_error "Error al generar el Token ID. Salida de Proxmox: $TOKEN_OUTPUT"
+    exit 1
+fi
+
+# 5. Asignar permisos al token
+# Usamos el ID completo generado por Proxmox directamente
+msg_info "Asignando permisos al token: $TOKEN_ID"
 pveum aclmod / --roles Administrator --tokens "$TOKEN_ID"
 
-msg_ok "Token configurado: $TOKEN_ID"
-echo "#######################################################"
-echo " GUARDA ESTE SECRET: $TOKEN_SECRET"
-echo "#######################################################"
-msg_info "[*] Guardando credenciales en /root/.proxmox-api"
+msg_ok "Token configurado y permisos asignados"
+echo "-------------------------------------------------------"
+echo " TOKEN ID:     $TOKEN_ID"
+echo " TOKEN SECRET: $TOKEN_SECRET"
+echo "-------------------------------------------------------"
 
 ### Guardar variables de entorno en archivo seguro
 cat <<EOF >/root/.proxmox-api
