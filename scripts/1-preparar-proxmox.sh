@@ -106,7 +106,7 @@ EOF
 
   # 3. Update System
   msg_info "Updating Proxmox VE (Patience)"
-  apt update -y -qq 
+  apt update -y   
   apt -y dist-upgrade >/dev/null 2>&1
   msg_ok "Updated Proxmox VE"
 
