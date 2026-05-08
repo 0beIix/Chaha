@@ -270,6 +270,7 @@ else
     # Capturamos el nombre exacto que Proxmox asigna al disco para evitar errores
     IMPORT_LOG=$(qm importdisk $TEMPLATE_VMID "$PATH_TEMP_IMG" $TEMPLATE_STORAGE)
     DISK_PATH=$(echo "$IMPORT_LOG" | grep -oP "unused\d+:\K\S+" | head -1)
+    msg_ok "[*] Disco importado a $DISK_PATH"
 
     # Si falla la extracción, usamos el fallback estándar
     if [ -z "$DISK_PATH" ]; then
