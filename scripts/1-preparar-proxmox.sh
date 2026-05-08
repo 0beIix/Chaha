@@ -255,7 +255,7 @@ qm set $TEMPLATE_VMID --boot c --bootdisk scsi0
 qm set $TEMPLATE_VMID --serial0 socket --vga serial0
 
 ### REDIMENSIONAR DISCO ###
-echo "[*] Redimensionando disco a $DISK_SIZE…"
+echo "[*] Redimensionando disco a $TEMPLATE_DISK_SIZE…"
 qm disk resize $TEMPLATE_VMID scsi0 "$TEMPLATE_DISK_SIZE"
 
 ### CONFIG CLOUD-INIT ###
