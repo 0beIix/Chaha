@@ -106,8 +106,8 @@ EOF
 
   # 3. Update System
   msg_info "Updating Proxmox VE (Patience)"
-  apt update 
-  apt -y dist-upgrade 
+  sudo apt update -y -qq 
+  apt -y dist-upgrade -o=Dpkg::Use-Pty=0 | grep --line-buffered "Progress"
   msg_ok "Updated Proxmox VE"
 
   msg_ok "Completed Post Install Routines"
@@ -233,8 +233,8 @@ chmod 600 "$PRIV_KEY_PATH"
 chmod 644 "$PUB_KEY_PATH"
 
 ### DESCARGAR DEPENDENCIAS ###
-apt update
-apt install -y jq
+sudo apt update -y >/dev/null 2>&1
+apt install -y jq >/dev/null 2>&1
 
 ### DESCARGAR IMAGEN A TEMPORAL ###
 msg_info "[*] Descargando imagen cloud a /tmp..."
@@ -253,7 +253,8 @@ else
     PATH_TEMP_IMG="/tmp/$IMG_NAME"
     if [ ! -f "$PATH_TEMP_IMG" ]; then
         msg_info "[*] Descargando imagen cloud a /tmp..."
-        wget -q "$IMG_URL" -O "$PATH_TEMP_IMG"
+        wget -q --show-progress "$IMG_URL" -O "$PATH_TEMP_IMG"
+        msg_info "[*] Imagen descargada a $PATH_TEMP_IMG"
     fi
 
     ### CREAR VM ###
