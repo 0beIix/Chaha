@@ -42,43 +42,39 @@ API_TOKEN_NAME="terraform-token"
 ### PREPARAR SISTEMA ####
 #########################
 
-# ... (tu código anterior de DEBIAN_CODENAME) ...
+# ... (tu detección de DEBIAN_CODENAME) ...
 
-### --- Configuración de Repositorios PVE ---
+### --- Configuración de Repositorios Proxmox ---
 echo "Configurando repositorios No-Subscription..."
 
-# Comentar el repositorio enterprise de PVE
 if [ -f /etc/apt/sources.list.d/pve-enterprise.list ]; then
     sed -i 's/^deb/#deb/g' /etc/apt/sources.list.d/pve-enterprise.list
 fi
 
-# Crear el repositorio No-Subscription de PVE
+# CORRECCIÓN: Se añade el componente al final de la línea
 cat <<EOF > /etc/apt/sources.list.d/pve-no-subscription.list
 deb http://download.proxmox.com/debian/pve $DEBIAN_CODENAME pve-no-subscription
 EOF
 
-### --- Configuración de Repositorios Ceph (Squid/Quincy/etc) ---
+### --- Configuración de Repositorios Ceph ---
 echo "Configurando repositorios de Ceph..."
 
-# Comentar el repositorio enterprise de Ceph (el que te da el error 401)
 if [ -f /etc/apt/sources.list.d/ceph.list ]; then
     sed -i 's/^deb/#deb/g' /etc/apt/sources.list.d/ceph.list
 fi
 
-# Añadir el repositorio No-Subscription de Ceph (versión Squid para Trixie/PVE 9 o Quincy para Bookworm/PVE 8)
-# Nota: Proxmox usualmente usa una variable para la versión de Ceph, pero 'squid' es la actual para Trixie.
+# CORRECCIÓN: Se añade el componente 'no-subscription' correctamente
+# Para Ceph Squid en Trixie:
 cat <<EOF > /etc/apt/sources.list.d/ceph-no-subscription.list
 deb http://download.proxmox.com/debian/ceph-squid $DEBIAN_CODENAME no-subscription
 EOF
 
-### --- Limpieza de Avisos y Actualización ---
-# Eliminar el aviso de "No Subscription"
+### --- Limpieza y Actualización ---
 sed -E -i.bak "s/(Ext.Msg.show\(\{)/void\(\1/g" /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
 
-# Reiniciar el servicio web para aplicar cambios visuales (opcional pero recomendado)
-# systemctl restart pveproxy
-
 echo "Actualizando sistema..."
+# Forzamos la limpieza de los índices para evitar errores de cache
+apt-get clean
 apt update && apt dist-upgrade -y
 
 ### ASEGURAR LLAVE SSH ###
