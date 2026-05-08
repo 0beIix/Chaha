@@ -321,7 +321,7 @@ pveum aclmod / -roles Administrator -groups "$API_GROUP"
 # 4. Configurar Token API
 msg_info "Configurando token API"
 
-# Borrar si existe (simplificado)
+# Borrar si existe
 if pveum user token list "$API_USER" --output-format json | jq -e ".[] | select(.tokenid == \"$API_TOKEN_NAME\")" >/dev/null 2>&1; then
     pveum user token delete "$API_USER" "$API_TOKEN_NAME" >/dev/null 2>&1
 fi
@@ -329,18 +329,17 @@ fi
 # Intentar creación y capturar salida
 TOKEN_OUTPUT=$(pveum user token add "$API_USER" "$API_TOKEN_NAME" --privsep 1 --output-format json)
 
-# Extraer valores asegurándonos de que no sean null
-TOKEN_ID=$(echo "$TOKEN_OUTPUT" | jq -r '.fullid // empty')
+# CORRECCIÓN: Intentamos leer 'full-tokenid' y si falla, 'fullid'
+TOKEN_ID=$(echo "$TOKEN_OUTPUT" | jq -r 'if ."full-tokenid" then ."full-tokenid" else .fullid end // empty')
 TOKEN_SECRET=$(echo "$TOKEN_OUTPUT" | jq -r '.value // empty')
 
-# VALIDACIÓN CRÍTICA: Si TOKEN_ID está vacío, el script debe detenerse antes del error 400
+# VALIDACIÓN
 if [ -z "$TOKEN_ID" ] || [ "$TOKEN_ID" == "null" ]; then
     msg_error "Error al generar el Token ID. Salida de Proxmox: $TOKEN_OUTPUT"
     exit 1
 fi
 
 # 5. Asignar permisos al token
-# Usamos el ID completo generado por Proxmox directamente
 msg_info "Asignando permisos al token: $TOKEN_ID"
 pveum aclmod / --roles Administrator --tokens "$TOKEN_ID"
 
