@@ -107,7 +107,7 @@ EOF
   # 3. Update System
   msg_info "Updating Proxmox VE (Patience)"
   apt update -y -qq 
-  apt -y dist-upgrade -o=Dpkg::Use-Pty=0 | grep --line-buffered "Progress"
+  apt -y dist-upgrade >/dev/null 2>&1
   msg_ok "Updated Proxmox VE"
 
   msg_ok "Completed Post Install Routines"
