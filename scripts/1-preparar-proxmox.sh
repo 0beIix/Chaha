@@ -106,7 +106,7 @@ EOF
 
   # 3. Update System
   msg_info "Updating Proxmox VE (Patience)"
-  sudo apt update -y -qq 
+  apt update -y -qq 
   apt -y dist-upgrade -o=Dpkg::Use-Pty=0 | grep --line-buffered "Progress"
   msg_ok "Updated Proxmox VE"
 
@@ -233,7 +233,7 @@ chmod 600 "$PRIV_KEY_PATH"
 chmod 644 "$PUB_KEY_PATH"
 
 ### DESCARGAR DEPENDENCIAS ###
-sudo apt update -y >/dev/null 2>&1
+apt update -y >/dev/null 2>&1
 apt install -y jq >/dev/null 2>&1
 
 ### DESCARGAR IMAGEN A TEMPORAL ###
