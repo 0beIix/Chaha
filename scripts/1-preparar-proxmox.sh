@@ -245,9 +245,10 @@ else
     ### IMPORTAR DISCO ###
     msg_info "[*] Importando disco..."
     qm importdisk $TEMPLATE_VMID "$PATH_TEMP_IMG" $TEMPLATE_STORAGE
-    DISK_PATH="${TEMPLATE_STORAGE}:vm-$TEMPLATE_VMID-disk-0"
 
 fi
+
+DISK_PATH="${TEMPLATE_STORAGE}:vm-$TEMPLATE_VMID-disk-0"
 
 ### LIMPIEZA ###
 # rm -f "$PATH_TEMP_IMG"
