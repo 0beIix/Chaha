@@ -38,16 +38,169 @@ API_TOKEN_NAME="terraform-token"
 ### NO EDITAR DEBAJO ###
 ########################
 
+#!/usr/bin/env bash
+
+# Versión Automatizada (Silenciosa) del PVE Post Install
+# Basado en el script de tteck
+
+set -euo pipefail
+shopt -s inherit_errexit nullglob
+
+# --- Colores y Mensajes ---
+RD=$(echo "\033[01;31m")
+YW=$(echo "\033[33m")
+GN=$(echo "\033[1;92m")
+CL=$(echo "\033[m")
+BFR="\\r\\033[K"
+HOLD="-"
+CM="${GN}✓${CL}"
+CROSS="${RD}✗${CL}"
+
+msg_info() { echo -ne " ${HOLD} ${YW}$1..."; }
+msg_ok() { echo -e "${BFR} ${CM} ${GN}$1${CL}"; }
+msg_error() { echo -e "${BFR} ${CROSS} ${RD}$1${CL}"; }
+
+# --- Funciones de Versión ---
+get_pve_version() {
+  pveversion | awk -F'/' '{print $2}' | awk -F'-' '{print $1}'
+}
+
+get_pve_major_minor() {
+  local major minor
+  IFS='.' read -r major minor _ <<<"$1"
+  echo "$major $minor"
+}
+
+component_exists_in_sources() {
+  grep -h -E "^[^#]*Components:[^#]*\b$1\b" /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .
+}
+
+# --- Rutinas Comunes (Lo que antes eran menús) ---
+post_routines_common() {
+  # 1. Disable Subscription Nag
+  msg_info "Disabling subscription nag"
+  mkdir -p /usr/local/bin
+  cat >/usr/local/bin/pve-remove-nag.sh <<'EOF'
+#!/bin/sh
+WEB_JS=/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+if [ -s "$WEB_JS" ] && ! grep -q NoMoreNagging "$WEB_JS"; then
+    sed -i -e "/data\.status/ s/!//" -e "/data\.status/ s/active/NoMoreNagging/" "$WEB_JS"
+fi
+EOF
+  chmod 755 /usr/local/bin/pve-remove-nag.sh
+  cat >/etc/apt/apt.conf.d/no-nag-script <<'EOF'
+DPkg::Post-Invoke { "/usr/local/bin/pve-remove-nag.sh"; };
+EOF
+  chmod 644 /etc/apt/apt.conf.d/no-nag-script
+  msg_ok "Disabled subscription nag"
+
+  # Reinstalar toolkit para aplicar parche
+  apt --reinstall install proxmox-widget-toolkit &>/dev/null || true
+
+  # 2. HA Services (En una instalación nueva/limpia solemos deshabilitarlos si es single node)
+  if systemctl is-active --quiet pve-ha-lrm; then
+    msg_info "Disabling high availability (Single Node Optimization)"
+    systemctl disable -q --now pve-ha-lrm pve-ha-crm corosync || true
+    msg_ok "Disabled high availability"
+  fi
+
+  # 3. Update System
+  msg_info "Updating Proxmox VE (Patience)"
+  apt update &>/dev/null
+  apt -y dist-upgrade &>/dev/null
+  msg_ok "Updated Proxmox VE"
+
+  msg_ok "Completed Post Install Routines"
+  
+  # 4. Reboot (Opcional: Si quieres que reinicie solo, quita el '#' de abajo)
+  # msg_info "Rebooting..." && sleep 2 && reboot
+}
+
+# --- Rutinas para PVE 8 (Bookworm) ---
+start_routines_8() {
+  msg_info "Correcting Proxmox VE Sources"
+  cat <<EOF >/etc/apt/sources.list
+deb http://deb.debian.org/debian bookworm main contrib
+deb http://deb.debian.org/debian bookworm-updates main contrib
+deb http://security.debian.org/debian-security bookworm-security main contrib
+EOF
+  echo 'APT::Get::Update::SourceListWarnings::NonFreeFirmware "false";' >/etc/apt/apt.conf.d/no-bookworm-firmware.conf
+  
+  msg_info "Disabling 'pve-enterprise' repository"
+  [ -f /etc/apt/sources.list.d/pve-enterprise.list ] && sed -i 's/^deb/#deb/g' /etc/apt/sources.list.d/pve-enterprise.list
+  
+  msg_info "Enabling 'pve-no-subscription' repository"
+  cat <<EOF >/etc/apt/sources.list.d/pve-install-repo.list
+deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription
+EOF
+
+  msg_info "Correcting Ceph package repositories"
+  cat <<EOF >/etc/apt/sources.list.d/ceph.list
+# deb https://enterprise.proxmox.com/debian/ceph-quincy bookworm enterprise
+deb http://download.proxmox.com/debian/ceph-quincy bookworm no-subscription
+EOF
+  msg_ok "Sources and Repositories configured"
+  post_routines_common
+}
+
+# --- Rutinas para PVE 9 (Trixie) ---
+start_routines_9() {
+  msg_info "Migrating to deb822 sources (Proxmox 9)"
+  rm -f /etc/apt/sources.list.d/*.list
+  cat >/etc/apt/sources.list.d/debian.sources <<EOF
+Types: deb
+URIs: http://deb.debian.org/debian
+Suites: trixie trixie-updates
+Components: main contrib
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: http://security.debian.org/debian-security
+Suites: trixie-security
+Components: main contrib
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+EOF
+
+  msg_info "Adding 'pve-no-subscription' (deb822)"
+  cat >/etc/apt/sources.list.d/proxmox.sources <<EOF
+Types: deb
+URIs: http://download.proxmox.com/debian/pve
+Suites: trixie
+Components: pve-no-subscription
+Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+EOF
+
+  msg_info "Adding 'ceph-squid' no-subscription"
+  cat >/etc/apt/sources.list.d/ceph.sources <<EOF
+Types: deb
+URIs: http://download.proxmox.com/debian/ceph-squid
+Suites: trixie
+Components: no-subscription
+Signed-By: /usr/share/keyrings/proxmox-archive-keyring.gpg
+EOF
+
+  post_routines_common
+}
+
+# --- Ejecución Principal ---
+PVE_VERSION="$(get_pve_version)"
+read -r PVE_MAJOR PVE_MINOR <<<"$(get_pve_major_minor "$PVE_VERSION")"
+
+echo -e "${GN}Starting unattended Proxmox VE $PVE_MAJOR.x Post Install...${CL}"
+
+if [[ "$PVE_MAJOR" == "8" ]]; then
+  start_routines_8
+elif [[ "$PVE_MAJOR" == "9" ]]; then
+  start_routines_9
+else
+  msg_error "Unsupported version: $PVE_MAJOR"
+  exit 1
+fi
+
 #########################
 ### PREPARAR SISTEMA ####
 #########################
 
-### Solucionar repositorios enterprise
-
-yes y | bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pve-install.sh)"
-# Forzamos la limpieza de los índices para evitar errores de cache
-apt-get clean
-apt update && apt dist-upgrade -y
 
 ### ASEGURAR LLAVE SSH ###
 echo "[*] Verificando llave SSH…"
