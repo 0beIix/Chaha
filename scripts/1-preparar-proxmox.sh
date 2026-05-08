@@ -232,8 +232,15 @@ fi
 
 ### VERIFICAR SI LA VM YA EXISTE ###
 if qm status $TEMPLATE_VMID >/dev/null 2>&1; then
-    msg_ok "[!] La VM $TEMPLATE_VMID ya existe. Saltando creación de template."
+    msg_ok "[!] La VM $TEMPLATE_VMID ya existe. Saltando todo el proceso de creación y configuración."
 else
+    ### DESCARGAR IMAGEN SI NO EXISTE ###
+    PATH_TEMP_IMG="/tmp/$IMG_NAME"
+    if [ ! -f "$PATH_TEMP_IMG" ]; then
+        msg_info "[*] Descargando imagen cloud a /tmp..."
+        wget -q "$IMG_URL" -O "$PATH_TEMP_IMG"
+    fi
+
     ### CREAR VM ###
     msg_info "[*] Creando VM $TEMPLATE_VMID..."
     qm create $TEMPLATE_VMID \
@@ -244,40 +251,41 @@ else
 
     ### IMPORTAR DISCO ###
     msg_info "[*] Importando disco..."
-    qm importdisk $TEMPLATE_VMID "$PATH_TEMP_IMG" $TEMPLATE_STORAGE
+    # Capturamos el nombre exacto que Proxmox asigna al disco para evitar errores
+    IMPORT_LOG=$(qm importdisk $TEMPLATE_VMID "$PATH_TEMP_IMG" $TEMPLATE_STORAGE)
+    DISK_PATH=$(echo "$IMPORT_LOG" | grep -oP "unused\d+:\K\S+" | head -1)
 
+    # Si falla la extracción, usamos el fallback estándar
+    if [ -z "$DISK_PATH" ]; then
+        DISK_PATH="${TEMPLATE_STORAGE}:vm-$TEMPLATE_VMID-disk-0"
+    fi
+
+    ### CONFIGURAR HARDWARE ###
+    msg_info "[*] Ajustando hardware..."
+    qm set $TEMPLATE_VMID --scsihw virtio-scsi-pci --scsi0 "$DISK_PATH"
+    qm set $TEMPLATE_VMID --ide2 ${TEMPLATE_STORAGE}:cloudinit
+    qm set $TEMPLATE_VMID --boot c --bootdisk scsi0
+    qm set $TEMPLATE_VMID --serial0 socket --vga serial0
+
+    ### REDIMENSIONAR DISCO ###
+    msg_info "[*] Redimensionando disco a $TEMPLATE_DISK_SIZE..."
+    qm disk resize $TEMPLATE_VMID scsi0 "$TEMPLATE_DISK_SIZE"
+
+    ### CONFIG CLOUD-INIT ###
+    msg_info "[*] Configurando Cloud-Init..."
+    qm set $TEMPLATE_VMID --ciuser "$CIUSER"
+    qm set $TEMPLATE_VMID --cipassword "$CIPASSWORD"
+    qm set $TEMPLATE_VMID --sshkeys "$PUB_KEY"
+    qm set $TEMPLATE_VMID --ipconfig0 ip=dhcp
+
+    ### CONVERTIR A TEMPLATE ###
+    msg_info "[*] Convirtiendo VM en plantilla..."
+    qm template $TEMPLATE_VMID
+    
+    msg_ok "[+] Plantilla $TEMPLATE_VMID creada exitosamente."
 fi
 
-DISK_PATH="${TEMPLATE_STORAGE}:vm-$TEMPLATE_VMID-disk-0"
-
-### LIMPIEZA ###
-# rm -f "$PATH_TEMP_IMG"
-
-### CONFIGURAR HARDWARE ###
-msg_info "[*] Ajustando hardware…"
-qm set $TEMPLATE_VMID --scsihw virtio-scsi-pci --scsi0 $DISK_PATH
-qm set $TEMPLATE_VMID --ide2 ${TEMPLATE_STORAGE}:cloudinit
-qm set $TEMPLATE_VMID --boot c --bootdisk scsi0
-qm set $TEMPLATE_VMID --serial0 socket --vga serial0
-
-### REDIMENSIONAR DISCO ###
-echo "[*] Redimensionando disco a $TEMPLATE_DISK_SIZE…"
-qm disk resize $TEMPLATE_VMID scsi0 "$TEMPLATE_DISK_SIZE"
-
-### CONFIG CLOUD-INIT ###
-echo "[*] Configurando Cloud-Init…"
-qm set $TEMPLATE_VMID --ciuser "$CIUSER"
-qm set $TEMPLATE_VMID --cipassword "$CIPASSWORD"
-qm set $TEMPLATE_VMID --sshkeys "$PUB_KEY"
-
-# DHCP para la interfaz principal
-qm set $TEMPLATE_VMID --ipconfig0 ip=dhcp
-
-### CONVERTIR A TEMPLATE ###
-msg_info "[*] Convirtiendo VM en plantilla…"
-qm template $TEMPLATE_VMID
-
-msg_info "[*] Preparando Proxmox para IaC con Terraform…"
+msg_info "[*] Preparando Proxmox para IaC con Terraform..."
 
 ### Detectar automáticamente la IP de gestión de Proxmox
 PROXMOX_IP=$(hostname -I | awk '{print $1}')
