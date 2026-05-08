@@ -288,40 +288,51 @@ echo "[*] IP de Proxmox detectada: $PROXMOX_IP"
 ### CONFIGURAR USUARIO ###
 ##########################
 
-### Crear grupo si no existe
-if ! pveum group list | grep -q "$API_GROUP"; then
-    echo "[*] Creando el grupo de Proxmox: $API_GROUP"
+# 1. Crear grupo (Validación exacta con awk para evitar falsos positivos)
+if ! pveum group list --output-format json | jq -e ".[] | select(.groupid == \"$API_GROUP\")" >/dev/null 2>&1; then
+    msg_info "Creando el grupo de Proxmox: $API_GROUP"
     pveum groupadd "$API_GROUP" -comment "Grupo de automatización para Terraform"
 else
-    echo "[*] El grupo $API_GROUP ya existe"
+    msg_ok "El grupo $API_GROUP ya existe"
 fi
 
-### Crear usuario si no existe
-if ! pveum user list | grep -q "$API_USER"; then
-    echo "[*] Creando usuario API en Proxmox: $API_USER"
+# 2. Crear usuario (Validación exacta)
+if ! pveum user list --output-format json | jq -e ".[] | select(.userid == \"$API_USER\")" >/dev/null 2>&1; then
+    msg_info "Creando usuario API en Proxmox: $API_USER"
     pveum useradd "$API_USER" -comment "Usuario API para Terraform"
+    # Añadimos el usuario al grupo (importante si quieres heredar permisos)
+    pveum usermod "$API_USER" -group "$API_GROUP"
 else
-    echo "[*] El usuario $API_USER ya existe"
+    msg_ok "El usuario $API_USER ya existe"
 fi
 
-### Asignar permisos de Administrador al grupo
-echo "[*] Asignando permisos de Administrador al grupo $API_GROUP"
+# 3. Asignar permisos al grupo
+msg_info "Asignando permisos de Administrador al grupo $API_GROUP"
 pveum aclmod / -roles Administrator -groups "$API_GROUP"
 
-### Crear o actualizar token API
-echo "[*] Configurando token API..."
-# Borramos el token anterior si existe para generar uno nuevo y capturar el Secret
-pveum user token delete "$API_USER" "$API_TOKEN_NAME" || true
+# 4. Configurar Token API
+msg_info "Configurando token API..."
+
+# Verificamos si el token existe antes de intentar manipularlo
+TOKEN_EXISTS=$(pveum user token list "$API_USER" --output-format json | jq -e ".[] | select(.tokenid == \"$API_TOKEN_NAME\")" >/dev/null 2>&1 && echo "yes" || echo "no")
+
+if [ "$TOKEN_EXISTS" == "yes" ]; then
+    msg_ok "El token $API_TOKEN_NAME ya existe. Rotando para obtener nuevo Secret..."
+    pveum user token delete "$API_USER" "$API_TOKEN_NAME"
+fi
+
+# CREACIÓN ÚNICA (Solo una vez)
 TOKEN_OUTPUT=$(pveum user token add "$API_USER" "$API_TOKEN_NAME" --privsep 1 --output-format json)
 TOKEN_ID=$(echo "$TOKEN_OUTPUT" | jq -r '.fullid')
 TOKEN_SECRET=$(echo "$TOKEN_OUTPUT" | jq -r '.value')
 
-TOKEN_OUTPUT=$(pveum user token add "$API_USER" "$API_TOKEN_NAME" --privsep 1 --output-format json)
+# 5. Asignar permisos al token (Usamos 'acl modify' o 'aclmod')
+pveum aclmod / --roles Administrator --tokens "$TOKEN_ID"
 
-### Asignar permisos de Administrador al token
-pveum acl modify / --roles Administrator --tokens "$TOKEN_ID"
-
-msg_ok "[*] Token API creado: $TOKEN_ID"
+msg_ok "Token configurado: $TOKEN_ID"
+echo "#######################################################"
+echo " GUARDA ESTE SECRET: $TOKEN_SECRET"
+echo "#######################################################"
 msg_info "[*] Guardando credenciales en /root/.proxmox-api"
 
 ### Guardar variables de entorno en archivo seguro
