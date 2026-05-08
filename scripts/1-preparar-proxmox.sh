@@ -42,37 +42,9 @@ API_TOKEN_NAME="terraform-token"
 ### PREPARAR SISTEMA ####
 #########################
 
-# ... (tu detección de DEBIAN_CODENAME) ...
+### Solucionar repositorios enterprise
 
-### --- Configuración de Repositorios Proxmox ---
-echo "Configurando repositorios No-Subscription..."
-
-if [ -f /etc/apt/sources.list.d/pve-enterprise.list ]; then
-    sed -i 's/^deb/#deb/g' /etc/apt/sources.list.d/pve-enterprise.list
-fi
-
-# CORRECCIÓN: Se añade el componente al final de la línea
-cat <<EOF > /etc/apt/sources.list.d/pve-no-subscription.list
-deb http://download.proxmox.com/debian/pve $DEBIAN_CODENAME pve-no-subscription
-EOF
-
-### --- Configuración de Repositorios Ceph ---
-echo "Configurando repositorios de Ceph..."
-
-if [ -f /etc/apt/sources.list.d/ceph.list ]; then
-    sed -i 's/^deb/#deb/g' /etc/apt/sources.list.d/ceph.list
-fi
-
-# CORRECCIÓN: Se añade el componente 'no-subscription' correctamente
-# Para Ceph Squid en Trixie:
-cat <<EOF > /etc/apt/sources.list.d/ceph-no-subscription.list
-deb http://download.proxmox.com/debian/ceph-squid $DEBIAN_CODENAME no-subscription
-EOF
-
-### --- Limpieza y Actualización ---
-sed -E -i.bak "s/(Ext.Msg.show\(\{)/void\(\1/g" /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
-
-echo "Actualizando sistema..."
+yes y | bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pve-install.sh)"
 # Forzamos la limpieza de los índices para evitar errores de cache
 apt-get clean
 apt update && apt dist-upgrade -y
