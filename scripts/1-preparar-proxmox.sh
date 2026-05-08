@@ -6,7 +6,7 @@ set -e
 ###########################
 
 ### Interfaz de monitoreo
-IFACE_MON="enp1s0" # <--- Cambia esto por la NIC física que recibirá el tráfico
+IFACE_MON="enp0s19" # <--- Cambia esto por la NIC física que recibirá el tráfico
 
 ### Datos para el template (solo afectan a Puppet-Master VM)
 TEMPLATE_VMID=5000
@@ -202,20 +202,34 @@ fi
 #########################
 
 
+##########################
 ### ASEGURAR LLAVE SSH ###
-msg_info "[*] Verificando llave SSH…"
+##########################
+msg_info "Verificando llave SSH"
 
 SSH_DIR="$HOME/.ssh"
-PUB_KEY="$SSH_DIR/${SSH_KEY_NAME}.pub"
-PRIV_KEY="$SSH_DIR/${SSH_KEY_NAME}"
+# Aseguramos que el nombre de la llave sea consistente con lo que vimos en tu ls
+SSH_KEY_NAME="puppet_master_ed25519" 
+PUB_KEY_PATH="$SSH_DIR/${SSH_KEY_NAME}.pub"
+PRIV_KEY_PATH="$SSH_DIR/${SSH_KEY_NAME}"
 
-if [[ ! -f "$PUB_KEY" ]]; then
-    echo "[*] No existe llave SSH dedicada — generando nueva…"
+if [[ ! -f "$PUB_KEY_PATH" ]]; then
+    msg_info "Generando nueva llave SSH ED25519"
     mkdir -p "$SSH_DIR"
-    ssh-keygen -t ed25519 -f "$PRIV_KEY" -C "puppet-master-key" -N ""
+    chmod 700 "$SSH_DIR"
+    ssh-keygen -t ed25519 -f "$PRIV_KEY_PATH" -C "puppet-master-key" -N "" -q
+    msg_ok "Llave generada: $PUB_KEY_PATH"
 else
-    echo "[*] Llave SSH ya existe: $PUB_KEY"
+    msg_ok "Llave SSH ya existe: $PUB_KEY_PATH"
 fi
+
+# ASIGNACIÓN CRÍTICA: Extraer el contenido para usarlo en Cloud-Init
+# Esto asegura que la variable PUB_KEY que usas en 'qm set' tenga el contenido real
+PUB_KEY=$(cat "$PUB_KEY_PATH")
+
+# Asegurar permisos correctos (SSH es estricto con esto)
+chmod 600 "$PRIV_KEY_PATH"
+chmod 644 "$PUB_KEY_PATH"
 
 ### DESCARGAR DEPENDENCIAS ###
 apt update
@@ -275,7 +289,7 @@ else
     msg_info "[*] Configurando Cloud-Init..."
     qm set $TEMPLATE_VMID --ciuser "$CIUSER"
     qm set $TEMPLATE_VMID --cipassword "$CIPASSWORD"
-    qm set $TEMPLATE_VMID --sshkeys "$PUB_KEY"
+    qm set $TEMPLATE_VMID --sshkeys "$PUB_KEY_PATH"
     qm set $TEMPLATE_VMID --ipconfig0 ip=dhcp
 
     ### CONVERTIR A TEMPLATE ###
@@ -354,6 +368,7 @@ cat <<EOF >/root/.proxmox-api
 export PM_API_URL="https://$PROXMOX_IP:8006/api2/json"
 export PM_API_TOKEN_ID="$TOKEN_ID"
 export PM_API_TOKEN_SECRET="$TOKEN_SECRET"
+export SSH_PUBLIC_KEY="$PUB_KEY"
 EOF
 
 chmod 600 /root/.proxmox-api
@@ -420,11 +435,11 @@ echo " Usuario CI:   $CIUSER"
 echo " Contraseña:   $CIPASSWORD"
 echo "-----------------------------------------------"
 echo " Llave SSH utilizada:"
-echo "   Pública : $PUB_KEY"
-echo "   Privada : $PRIV_KEY"
+echo "   Pública : $PUB_KEY_PATH"
+echo "   Privada : $PRIV_KEY_PATH"
 echo "-----------------------------------------------"
 echo " Para conectarte luego:"
-echo "   ssh -i $PRIV_KEY $CIUSER@<IP>"
+echo "   ssh -i $PRIV_KEY_PATH $CIUSER@<IP>"
 echo "-----------------------------------------------"
 echo "            Configuración para IaC             "
 echo "-----------------------------------------------"

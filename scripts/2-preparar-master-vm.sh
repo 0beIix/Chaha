@@ -20,35 +20,53 @@ echo "[*] Instalando Ansible…"
 sudo add-apt-repository --yes --update ppa:ansible/ansible
 sudo apt install -y ansible tree
 
-### 3. DETECTAR ÚLTIMA VERSIÓN DEL PROVEEDOR
-echo "[*] Buscando la última versión de bpg/proxmox..."
-LATEST_VERSION=$(curl -s https://api.github.com/repos/bpg/terraform-provider-proxmox/releases/latest | jq -r .tag_name | sed 's/v//')
-echo "[*] Versión detectada: $LATEST_VERSION"
-
 ############################
 ### Setup de Repositorio ###
 ############################
 
 ### 4. CLONAR EL REPOSITORIO CHAHA
 echo "[*] Clonando el repositorio Chaha desde GitHub…"
-rm -rf ~/Chaha # Limpiar si ya existe
+rm -rf ~/Chaha
 git clone https://github.com/0beIix/Chaha.git ~/Chaha
-cd ~/Chaha/tofu
 
 ### 5. CONFIGURAR CREDENCIALES AUTOMÁTICAMENTE
 read -p "Ingrese la IP de Proxmox: " PROXMOX_HOST
-# Traemos el archivo .proxmox-api generado por el primer script
-scp root@${PROXMOX_HOST}:/root/.proxmox-api ~/.proxmox-api
-source ~/.proxmox-api
+
+# CORRECCIÓN SCP: Forzamos que el destino sea el archivo local
+echo "[*] Obteniendo credenciales desde Proxmox..."
+scp root@${PROXMOX_HOST}:/root/.proxmox-api "$HOME/.proxmox-api"
+
+# Cargar variables (asegúrate de que el archivo en Proxmox use 'export PM_...')
+source "$HOME/.proxmox-api"
 
 echo "[*] Generando secrets.tfvars…"
+# CORRECCIÓN: El formato del token para el provider bpg suele ser "ID=SECRET" 
+# pero asegúrate de que coincida con lo que espera tu provider.
 cat <<EOF > ~/Chaha/tofu/secrets.tfvars
-proxmox_api_token = "$PM_API_TOKEN_ID=$PM_API_TOKEN_SECRET"
-proxmox_endpoint  = "$PM_API_URL"
-ssh_public_key    = "$(cat ~/.ssh/id_ed25519.pub)"
+proxmox_api_token = "${PM_API_TOKEN_ID}=${PM_API_TOKEN_SECRET}"
+proxmox_endpoint  = "${PM_API_URL}"
+ssh_public_key    = "${SSH_PUBLIC_KEY}"
 EOF
 
-echo "[*] Entorno preparado. Ya puedes ejecutar:"
-echo " 1. 'tofu init' para inicializar"
-echo " 2. 'tofu plan -var-file=secrets.tfvars' para planificar"
-echo " 3. 'tofu apply -var-file=secrets.tfvars' para aplicar"
+##############################
+### LIMPIEZA DE SEGURIDAD  ###
+##############################
+
+echo "[*] Limpiando archivos temporales de seguridad..."
+
+# Borramos el archivo de variables descargado para no dejar credenciales en texto plano en el home
+if [ -f "$HOME/.proxmox-api" ]; then
+    rm "$HOME/.proxmox-api"
+    msg_ok "Archivo .proxmox-api eliminado localmente."
+fi
+
+# Opcional: Borrar el historial de bash para que la IP y comandos no queden registrados
+history -c
+
+echo -e "\n[*] Entorno preparado exitosamente."
+echo "-------------------------------------------------------"
+echo " Ubicación: ~/Chaha/tofu"
+echo " 1. cd ~/Chaha/tofu"
+echo " 2. tofu init"
+echo " 3. tofu apply -var-file=secrets.tfvars"
+echo "-------------------------------------------------------"
