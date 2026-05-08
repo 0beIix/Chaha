@@ -203,7 +203,7 @@ fi
 
 
 ### ASEGURAR LLAVE SSH ###
-echo "[*] Verificando llave SSH…"
+msg_info "[*] Verificando llave SSH…"
 
 SSH_DIR="$HOME/.ssh"
 PUB_KEY="$SSH_DIR/${SSH_KEY_NAME}.pub"
@@ -222,7 +222,7 @@ apt update
 apt install -y jq
 
 ### DESCARGAR IMAGEN A TEMPORAL ###
-echo "[*] Descargando imagen cloud a /tmp..."
+msg_info "[*] Descargando imagen cloud a /tmp..."
 PATH_TEMP_IMG="/tmp/$IMG_NAME"
 
 # Descargamos solo si no existe para ahorrar ancho de banda
@@ -231,7 +231,7 @@ if [ ! -f "$PATH_TEMP_IMG" ]; then
 fi
 
 ### CREAR VM ###
-echo "[*] Creando VM $VMID…"
+msg_info "[*] Creando VM $TEMPLATE_VMID…"
 qm create $TEMPLATE_VMID \
   --name $TEMPLATE_VM_NAME \
   --memory $TEMPLATE_MEMORY \
@@ -239,7 +239,7 @@ qm create $TEMPLATE_VMID \
   --net0 virtio,bridge=$TEMPLATE_BRIDGE
 
 ### IMPORTAR DISCO ###
-echo "[*] Importando disco…"
+msg_info "[*] Importando disco…"
 qm importdisk $TEMPLATE_VMID "$PATH_TEMP_IMG" $TEMPLATE_STORAGE
 
 ### LIMPIEZA ###
@@ -248,7 +248,7 @@ rm -f "$PATH_TEMP_IMG"
 DISK_PATH="${TEMPLATE_STORAGE}:vm-$TEMPLATE_VMID-disk-0"
 
 ### CONFIGURAR HARDWARE ###
-echo "[*] Ajustando hardware…"
+msg_info "[*] Ajustando hardware…"
 qm set $TEMPLATE_VMID --scsihw virtio-scsi-pci --scsi0 $DISK_PATH
 qm set $TEMPLATE_VMID --ide2 ${TEMPLATE_STORAGE}:cloudinit
 qm set $TEMPLATE_VMID --boot c --bootdisk scsi0
@@ -268,10 +268,10 @@ qm set $TEMPLATE_VMID --sshkeys "$PUB_KEY"
 qm set $TEMPLATE_VMID --ipconfig0 ip=dhcp
 
 ### CONVERTIR A TEMPLATE ###
-echo "[*] Convirtiendo VM en plantilla…"
+msg_info "[*] Convirtiendo VM en plantilla…"
 qm template $TEMPLATE_VMID
 
-echo "[*] Preparando Proxmox para IaC con Terraform…"
+msg_info "[*] Preparando Proxmox para IaC con Terraform…"
 
 ### Detectar automáticamente la IP de gestión de Proxmox
 PROXMOX_IP=$(hostname -I | awk '{print $1}')
@@ -315,8 +315,8 @@ TOKEN_OUTPUT=$(pveum user token add "$API_USER" "$API_TOKEN_NAME" --privsep 1 --
 ### Asignar permisos de Administrador al token
 pveum acl modify / --roles Administrator --tokens "$TOKEN_ID"
 
-echo "[*] Token API creado: $TOKEN_ID"
-echo "[*] Guardando credenciales en /root/.proxmox-api"
+msg_ok "[*] Token API creado: $TOKEN_ID"
+msg_info "[*] Guardando credenciales en /root/.proxmox-api"
 
 ### Guardar variables de entorno en archivo seguro
 cat <<EOF >/root/.proxmox-api
@@ -330,14 +330,14 @@ chmod 600 /root/.proxmox-api
 echo "[*] Cargando las variables de entorno…"
 source /root/.proxmox-api
 
-echo "[*] Preparación IaC completada correctamente."
+msg_ok "[*] Preparación IaC completada correctamente."
 
 
 ######################
 ### Configurar Red ###
 ######################
 
-echo "[*] Configurando persistencia para vmbr1 (Monitoreo)..."
+msg_info "[*] Configurando persistencia para vmbr1 (Monitoreo)..."
 
 if ! grep -q "iface vmbr1" /etc/network/interfaces; then
     echo "[*] Añadiendo vmbr1 a /etc/network/interfaces..."
