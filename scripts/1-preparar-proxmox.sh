@@ -106,8 +106,8 @@ EOF
 
   # 3. Update System
   msg_info "Updating Proxmox VE (Patience)"
-  apt update &>/dev/null
-  apt -y dist-upgrade &>/dev/null
+  apt update 
+  apt -y dist-upgrade 
   msg_ok "Updated Proxmox VE"
 
   msg_ok "Completed Post Install Routines"
@@ -147,6 +147,7 @@ EOF
 start_routines_9() {
   msg_info "Migrating to deb822 sources (Proxmox 9)"
   rm -f /etc/apt/sources.list.d/*.list
+  rm -f /etc/apt/sources.list.d/pve-enterprise.sources
   cat >/etc/apt/sources.list.d/debian.sources <<EOF
 Types: deb
 URIs: http://deb.debian.org/debian
