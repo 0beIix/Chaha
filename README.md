@@ -39,9 +39,12 @@ chaha
 Ejecutar el script en el shell de Proxmox. Este paso deja el hipervisor listo para recibir órdenes de OpenTofu.
 
 > [!IMPORTANT]
-> Editar las variables de la sección "Variables Editables" dentro del script antes de ejecutar.    
+> Podes pero no necesitas editar las variables de la sección "Variables Editables" dentro del script antes de ejecutar.    
     
-    
+``` bash
+curl -sSL https://raw.githubusercontent.com/0beIix/Chaha/main/scripts/1-preparar-proxmox.sh | bash
+```
+
 - Genera llaves SSH y configura accesos.
 - Descarga la imagen Cloud-Init y crea la plantilla base.
 - Crea el usuario API terraform@pve con permisos de administrador.
@@ -49,6 +52,10 @@ Ejecutar el script en el shell de Proxmox. Este paso deja el hipervisor listo pa
 - Despliega la VM Maestra desde donde se gestionará el resto.
 
 2. Preparación de la VM Maestra
+
+``` bash
+curl -sSL https://raw.githubusercontent.com/0beIix/Chaha/main/scripts/2-preparar-master-vm.sh | bash
+```
 
 - Dentro de la nueva VM creada, ejecutar 2-preparar-master-vm.sh:
 - Instala OpenTofu y Ansible.

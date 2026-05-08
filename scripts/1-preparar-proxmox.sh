@@ -38,9 +38,31 @@ API_TOKEN_NAME="terraform-token"
 ### NO EDITAR DEBAJO ###
 ########################
 
-########################
-### PREPARAR IMAGEN ####
-########################
+#########################
+### PREPARAR SISTEMA ####
+#########################
+
+### --- Configuración de Repositorios Proxmox (No-Subscription) ---
+echo "Configurando repositorios No-Subscription..."
+
+### Comentar el repositorio enterprise
+if [ -f /etc/apt/sources.list.d/pve-enterprise.list ]; then
+    sed -i 's/^deb/#deb/g' /etc/apt/sources.list.d/pve-enterprise.list
+fi
+
+### Agregar el repositorio No-Subscription de la comunidad (PVE 8)
+### Detección automática de la versión de Debian base
+DEBIAN_CODENAME=$(lsb_release -sc)
+
+cat <<EOF > /etc/apt/sources.list.d/pve-no-subscription.list
+deb http://download.proxmox.com/debian/pve $DEBIAN_CODENAME pve-no-subscription
+EOF
+
+### Quitar el aviso de "No Subscription" al loguearse (Opcional pero recomendado)
+sed -E -i.bak "s/(Ext.Msg.show\(\{)/void\(\1/g" /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+
+### Actualizar
+apt update && apt dist-upgrade -y
 
 ### ASEGURAR LLAVE SSH ###
 echo "[*] Verificando llave SSH…"
