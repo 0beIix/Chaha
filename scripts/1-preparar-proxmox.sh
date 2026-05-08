@@ -42,35 +42,43 @@ API_TOKEN_NAME="terraform-token"
 ### PREPARAR SISTEMA ####
 #########################
 
-### --- Configuración de Repositorios Proxmox (No-Subscription) ---
+# ... (tu código anterior de DEBIAN_CODENAME) ...
+
+### --- Configuración de Repositorios PVE ---
 echo "Configurando repositorios No-Subscription..."
 
-# Extraer el codename (ej: bookworm, bullseye) directamente del archivo de sistema
-DEBIAN_CODENAME=$(grep "VERSION_CODENAME=" /etc/os-release | cut -d= -f2)
-
-### Si por alguna razón lo anterior falla, usamos una alternativa común
-if [ -z "$DEBIAN_CODENAME" ]; then
-    DEBIAN_CODENAME=$(node -p "require('os').release()" 2>/dev/null) # Fallback extremo
-    # O simplemente leer el primer campo de VERSION en os-release
-    [ -z "$DEBIAN_CODENAME" ] && DEBIAN_CODENAME=$(grep -oP '(?<=VERSION=").*(?=\s)' /etc/os-release | awk '{print tolower($2)}' | tr -d '()')
-fi
-
-echo "Versión detectada: $DEBIAN_CODENAME"
-
-### Comentar el repositorio enterprise (evitar error 401)
+# Comentar el repositorio enterprise de PVE
 if [ -f /etc/apt/sources.list.d/pve-enterprise.list ]; then
     sed -i 's/^deb/#deb/g' /etc/apt/sources.list.d/pve-enterprise.list
 fi
 
-### Crear el repositorio No-Subscription dinámicamente
+# Crear el repositorio No-Subscription de PVE
 cat <<EOF > /etc/apt/sources.list.d/pve-no-subscription.list
 deb http://download.proxmox.com/debian/pve $DEBIAN_CODENAME pve-no-subscription
 EOF
 
-### Eliminar el molesto aviso de "No Subscription" al entrar a la web
+### --- Configuración de Repositorios Ceph (Squid/Quincy/etc) ---
+echo "Configurando repositorios de Ceph..."
+
+# Comentar el repositorio enterprise de Ceph (el que te da el error 401)
+if [ -f /etc/apt/sources.list.d/ceph.list ]; then
+    sed -i 's/^deb/#deb/g' /etc/apt/sources.list.d/ceph.list
+fi
+
+# Añadir el repositorio No-Subscription de Ceph (versión Squid para Trixie/PVE 9 o Quincy para Bookworm/PVE 8)
+# Nota: Proxmox usualmente usa una variable para la versión de Ceph, pero 'squid' es la actual para Trixie.
+cat <<EOF > /etc/apt/sources.list.d/ceph-no-subscription.list
+deb http://download.proxmox.com/debian/ceph-squid $DEBIAN_CODENAME no-subscription
+EOF
+
+### --- Limpieza de Avisos y Actualización ---
+# Eliminar el aviso de "No Subscription"
 sed -E -i.bak "s/(Ext.Msg.show\(\{)/void\(\1/g" /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
 
-### Actualizar
+# Reiniciar el servicio web para aplicar cambios visuales (opcional pero recomendado)
+# systemctl restart pveproxy
+
+echo "Actualizando sistema..."
 apt update && apt dist-upgrade -y
 
 ### ASEGURAR LLAVE SSH ###
