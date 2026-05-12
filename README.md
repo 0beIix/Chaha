@@ -36,7 +36,14 @@ chaha
 ### Operativa Breve
 1. Preparación del Host (Proxmox)
 
-Ejecutar el script en el shell de Proxmox. Este paso deja el hipervisor listo para recibir órdenes de OpenTofu.
+> [!IMPORTANT]
+> Ejecuta PVE Post Install Script después de instalar para configurar repositorios, quitar el 'nag' y actualizar el sistema, generalmente responder todo con 'y'.
+
+``` bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pve-install.sh)"
+```
+
+Ejecutar el setup script en el shell de Proxmox. Este paso deja el hipervisor listo para recibir órdenes de OpenTofu.
 
 > [!IMPORTANT]
 > Podes pero no necesitas editar las variables de la sección "Variables Editables" dentro del script antes de ejecutar.    
