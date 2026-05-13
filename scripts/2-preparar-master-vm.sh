@@ -1,72 +1,277 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
 
-#############################
-### INSTALAR DEPENDENCIAS ###
-#############################
+set -euo pipefail
+shopt -s inherit_errexit
 
-echo "[*] Instalando dependencias básicas…"
-sudo apt update && sudo apt install -y curl wget git jq software-properties-common
+CURRENT_STAGE="startup"
 
-### 1. INSTALAR OPEN TOFU
-echo "[*] Instalando OpenTofu…"
-curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
-chmod +x install-opentofu.sh
-./install-opentofu.sh --install-method deb
-rm -f install-opentofu.sh
+trap 'msg_error "Falló en etapa: ${CURRENT_STAGE}"' ERR
 
-### 2. INSTALAR ANSIBLE ###
-echo "[*] Instalando Ansible…"
-sudo add-apt-repository --yes --update ppa:ansible/ansible
-sudo apt install -y ansible tree
+########################
+### Global Variables ###
+########################
 
-############################
-### Setup de Repositorio ###
-############################
+readonly REPO_URL="https://github.com/0beIix/Chaha.git"
+readonly REPO_PATH="/root/Chaha"
 
-### 4. CLONAR EL REPOSITORIO CHAHA
-echo "[*] Clonando el repositorio Chaha desde GitHub…"
-rm -rf ~/Chaha
-git clone https://github.com/0beIix/Chaha.git ~/Chaha
+readonly API_CREDENTIALS_FILE="/root/.proxmox-api"
 
-### 5. CONFIGURAR CREDENCIALES AUTOMÁTICAMENTE
-read -p "Ingrese la IP de Proxmox: " PROXMOX_HOST
+readonly TFVARS_PATH="$REPO_PATH/tofu/secrets.tfvars"
 
-# CORRECCIÓN SCP: Forzamos que el destino sea el archivo local
-echo "[*] Obteniendo credenciales desde Proxmox..."
-scp root@${PROXMOX_HOST}:/root/.proxmox-api "$HOME/.proxmox-api"
+readonly PROXMOX_USER="root"
+readonly PROXMOX_HOST="192.168.100.50"
+readonly PROXMOX_API_FILE="/root/.proxmox-api"
 
-# Cargar variables (asegúrate de que el archivo en Proxmox use 'export PM_...')
-source "$HOME/.proxmox-api"
+########################
+### No editar debajo ###
+########################
 
-echo "[*] Generando secrets.tfvars…"
-# CORRECCIÓN: El formato del token para el provider bpg suele ser "ID=SECRET" 
-# pero asegúrate de que coincida con lo que espera tu provider.
-cat <<EOF > ~/Chaha/tofu/secrets.tfvars
+##############
+### Logger ###
+##############
+
+readonly RD="\033[01;31m"
+readonly YW="\033[33m"
+readonly GN="\033[1;92m"
+readonly BL="\033[1;34m"
+readonly CL="\033[m"
+
+msg_info() {
+    echo -e "${BL}[INFO]${CL} $1"
+}
+
+msg_ok() {
+    echo -e "${GN}[OK]${CL} $1"
+}
+
+msg_warn() {
+    echo -e "${YW}[WARN]${CL} $1"
+}
+
+msg_error() {
+    echo -e "${RD}[ERROR]${CL} $1"
+}
+
+############
+### Main ###
+############
+
+main() {
+    check_root
+
+    install_required_packages
+
+    install_opentofu
+    install_ansible
+
+    setup_repository
+
+    retrieve_proxmox_credentials
+    load_proxmox_credentials
+
+    generate_tfvars
+
+    cleanup_sensitive_files
+}
+
+########################
+### Dependency check ###
+########################
+
+check_root() {
+    if [[ "$EUID" -ne 0 ]]; then
+        msg_error "Este script debe ejecutarse como root"
+
+        exit 1
+    fi
+}
+
+readonly REQUIRED_PACKAGES=(
+    curl
+    wget
+    git
+    jq
+    software-properties-common
+    tree
+)
+
+install_required_packages() {
+    CURRENT_STAGE="packages"
+
+    msg_info "Instalando dependencias básicas"
+
+    apt-get update -qq
+
+    apt-get install -y "${REQUIRED_PACKAGES[@]}"
+
+    msg_ok "Dependencias instaladas correctamente"
+}
+
+################
+### OpenTofu ###
+################
+
+install_opentofu() {
+    CURRENT_STAGE="opentofu"
+
+    if command -v tofu >/dev/null 2>&1; then
+        msg_ok "OpenTofu ya está instalado"
+
+        return
+    fi
+
+    msg_info "Instalando OpenTofu"
+
+    local installer="/tmp/install-opentofu.sh"
+
+    curl --proto '=https' \
+        --tlsv1.2 \
+        -fsSL \
+        https://get.opentofu.org/install-opentofu.sh \
+        -o "$installer"
+
+    chmod +x "$installer"
+
+    "$installer" --install-method deb
+
+    rm -f "$installer"
+
+    msg_ok "OpenTofu instalado correctamente"
+}
+###############
+### Ansible ###
+###############
+
+install_ansible() {
+    CURRENT_STAGE="ansible"
+
+    if command -v ansible >/dev/null 2>&1; then
+        msg_ok "Ansible ya está instalado"
+
+        return
+    fi
+
+    msg_info "Instalando Ansible"
+
+    add-apt-repository --yes --update ppa:ansible/ansible
+
+    apt-get install -y ansible
+
+    msg_ok "Ansible instalado correctamente"
+}
+
+########################
+### Repository Setup ###
+########################
+
+setup_repository() {
+    CURRENT_STAGE="repository"
+
+    if [[ -d "$REPO_PATH/.git" ]]; then
+        msg_info "Actualizando repositorio Chaha"
+
+        git -C "$REPO_PATH" pull
+
+        msg_ok "Repositorio actualizado"
+
+        return
+    fi
+
+    msg_info "Clonando repositorio Chaha"
+
+    git clone "$REPO_URL" "$REPO_PATH"
+
+    msg_ok "Repositorio clonado correctamente"
+}
+
+#######################
+### Proxmox Secrets ###
+#######################
+
+retrieve_proxmox_credentials() {
+    CURRENT_STAGE="credentials"
+
+    if [[ -f "$TFVARS_PATH" ]]; then
+        msg_ok "El archivo secrets.tfvars ya existe"
+
+        return
+    fi
+
+    msg_info "Obteniendo credenciales desde Proxmox"
+
+    scp \
+        "${PROXMOX_USER}@${PROXMOX_HOST}:${PROXMOX_API_FILE}" \
+        "$API_CREDENTIALS_FILE"
+
+    chmod 600 "$API_CREDENTIALS_FILE"
+
+    msg_ok "Credenciales obtenidas correctamente"
+}
+
+read_config_value() {
+    local key="$1"
+
+    grep "^${key}=" "$API_CREDENTIALS_FILE" | cut -d'"' -f2
+}
+
+load_proxmox_credentials() {
+    CURRENT_STAGE="credentials_load"
+
+    if [[ ! -f "$API_CREDENTIALS_FILE" ]]; then
+        msg_error "No existe el archivo de credenciales API"
+
+        exit 1
+    fi
+
+    msg_info "Cargando credenciales API"
+
+    PM_API_URL=$(read_config_value "PM_API_URL")
+    PM_API_TOKEN_ID=$(read_config_value "PM_API_TOKEN_ID")
+    PM_API_TOKEN_SECRET=$(read_config_value "PM_API_TOKEN_SECRET")
+    SSH_PUBLIC_KEY=$(read_config_value "SSH_PUBLIC_KEY")
+
+    if [[ -z "${PM_API_URL:-}" || \
+          -z "${PM_API_TOKEN_ID:-}" || \
+          -z "${PM_API_TOKEN_SECRET:-}" ]]; then
+
+        msg_error "No se pudieron cargar las credenciales API"
+
+        exit 1
+    fi
+
+    msg_ok "Credenciales API cargadas correctamente"
+}
+
+######################
+### secrets.tfvars ###
+######################
+
+generate_tfvars() {
+    CURRENT_STAGE="tfvars"
+
+    msg_info "Generando secrets.tfvars"
+
+    cat > "$TFVARS_PATH" <<EOF
 proxmox_api_token = "${PM_API_TOKEN_ID}=${PM_API_TOKEN_SECRET}"
 proxmox_endpoint  = "${PM_API_URL}"
-ssh_public_key    = "${SSH_PUBLIC_KEY}"
+ssh_public_key   = "${SSH_PUBLIC_KEY}"
 EOF
 
-##############################
-### LIMPIEZA DE SEGURIDAD  ###
-##############################
+    chmod 600 "$TFVARS_PATH"
 
-echo "[*] Limpiando archivos temporales de seguridad..."
+    msg_ok "Archivo secrets.tfvars generado correctamente"
+}
 
-# Borramos el archivo de variables descargado para no dejar credenciales en texto plano en el home
-if [ -f "$HOME/.proxmox-api" ]; then
-    rm "$HOME/.proxmox-api"
-    msg_ok "Archivo .proxmox-api eliminado localmente."
-fi
+cleanup_sensitive_files() {
+    CURRENT_STAGE="cleanup"
 
-# Opcional: Borrar el historial de bash para que la IP y comandos no queden registrados
-history -c
+    msg_info "Limpiando archivos sensibles"
 
-echo -e "\n[*] Entorno preparado exitosamente."
-echo "-------------------------------------------------------"
-echo " Ubicación: ~/Chaha/tofu"
-echo " 1. cd ~/Chaha/tofu"
-echo " 2. tofu init"
-echo " 3. tofu apply -var-file=secrets.tfvars"
-echo "-------------------------------------------------------"
+    rm -f "$API_CREDENTIALS_FILE"
+
+    history -c || true
+
+    msg_ok "Archivos sensibles eliminados"
+}
+
+main "$@"

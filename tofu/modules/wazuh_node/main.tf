@@ -4,7 +4,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   node_name = var.node
 
   clone {
-    vm_id = 7000
+    vm_id = 5000
     full = true
   }
 

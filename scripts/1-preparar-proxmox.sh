@@ -350,7 +350,7 @@ configure_cloudinit() {
         --ciuser "$CI_USER"
 
     qm set "$TEMPLATE_VMID" \
-        --sshkeys "$SSH_PUBLIC_KEY_CONTENT"
+        --sshkeys "$SSH_PUBLIC_KEY_PATH"
 
     qm set "$TEMPLATE_VMID" \
         --ipconfig0 ip=dhcp
@@ -546,7 +546,7 @@ store_api_credentials() {
 PM_API_URL="https://${PROXMOX_IP}:8006/api2/json"
 PM_API_TOKEN_ID="${API_TOKEN_ID}"
 PM_API_TOKEN_SECRET="${API_TOKEN_SECRET}"
-SSH_PRIVATE_KEY="${SSH_PRIVATE_KEY_PATH}"
+SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY_PATH}"
 EOF
 
     chmod 600 "$API_CREDENTIALS_FILE"
