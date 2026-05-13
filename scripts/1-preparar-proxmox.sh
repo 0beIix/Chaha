@@ -26,7 +26,8 @@ readonly TEMPLATE_BRIDGE="vmbr0"
 
 ### Cloud-init user
 readonly CI_USER="chaha"
-readonly CI_ENABLE_PASSWORD_AUTH="false"
+readonly CI_PASSWORD_ENABLED="true"
+readonly CI_PASSWORD="ChangeMe123!"
 
 ### SSH
 readonly SSH_KEY_NAME="puppet_master_ed25519"
@@ -335,6 +336,8 @@ configure_template_hardware() {
         scsi0 \
         "$TEMPLATE_DISK_SIZE"
 
+    qm set "$TEMPLATE_VMID" --agent enabled=1
+
     msg_ok "Hardware configurado correctamente"
 }
 
@@ -347,10 +350,17 @@ configure_cloudinit() {
         --ciuser "$CI_USER"
 
     qm set "$TEMPLATE_VMID" \
-        --sshkeys "$SSH_PUBLIC_KEY_PATH"
+        --sshkeys "$SSH_PUBLIC_KEY_CONTENT"
 
     qm set "$TEMPLATE_VMID" \
         --ipconfig0 ip=dhcp
+
+    if [[ "$CI_PASSWORD_ENABLED" == "true" ]]; then
+        qm set "$TEMPLATE_VMID" \
+            --cipassword "$CI_PASSWORD"
+
+        msg_ok "Autenticación por contraseña habilitada"
+    fi
 
     msg_ok "Cloud-Init configurado correctamente"
 }
@@ -654,6 +664,8 @@ print_summary() {
     echo "VM IaC"
     echo "  VMID:        ${MASTER_VMID}"
     echo "  Nombre:      ${MASTER_VM_NAME}"
+    echo "  Usuario:     ${CI_USER}"
+    echo "  Contraseña:  ${CI_PASSWORD}"
     echo ""
     echo "SSH"
     echo "  Llave privada: ${SSH_PRIVATE_KEY_PATH}"
@@ -663,10 +675,6 @@ print_summary() {
     echo "  URL:         https://${PROXMOX_IP}:8006"
     echo "  Usuario:     ${API_USER}"
     echo "  Archivo:     ${API_CREDENTIALS_FILE}"
-    echo ""
-    echo "Red de monitoreo"
-    echo "  Interfaz:    ${MONITORING_INTERFACE}"
-    echo "  Bridge:      ${MONITORING_BRIDGE}"
     echo ""
     echo "================================================="
 }
