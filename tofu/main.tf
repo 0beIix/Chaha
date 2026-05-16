@@ -18,7 +18,7 @@ module "wazuh_nodes" {
     datastore_id = each.value.datastore_id
     vm_ip    = each.value.ip
     vm_gw    = each.value.gw
-    ssh_public_key = each.value.ssh_public_key
+    ssh_public_key = var.value.ssh_public_key
 }
 
 # Sensor Deployment
@@ -34,6 +34,6 @@ module "sensor_nodes" {
     datastore_id = each.value.datastore_id
     vm_ip    = each.value.ip
     vm_gw    = each.value.gw
-    ssh_public_key = each.value.ssh_public_key
-    sniff_bridge   = each.value.sniff_bridge
+    ssh_public_key = var.value.ssh_public_key
+    sniff_bridge   = var.value.sniff_bridge
 }

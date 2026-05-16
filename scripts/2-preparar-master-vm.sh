@@ -14,6 +14,7 @@ trap 'msg_error "Falló en etapa: ${CURRENT_STAGE}"' ERR
 readonly REPO_URL="https://github.com/0beIix/Chaha.git"
 readonly REPO_PATH="/root/Chaha"
 
+readonly SSH_KEY_NAME="puppet_master_ed25519"
 readonly API_CREDENTIALS_FILE="/root/.proxmox-api"
 
 readonly TFVARS_PATH="$REPO_PATH/tofu/secrets.tfvars"
