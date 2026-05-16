@@ -18,7 +18,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   initialization {
-    datastore_id = "local"
+    datastore_id = var.datastore_id
     user_account {
       username = var.vm_user
       # password = var.vm_password
@@ -43,7 +43,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   disk {
-    datastore_id = "local"
+    datastore_id = var.datastore_id
     size         = var.disk
     interface    = "scsi0"
   }

@@ -30,6 +30,11 @@ variable "disk" {
   description = "Disk size in GB"
 }
 
+variable "datastore_id" { 
+  type = string 
+  description = "Datastore name like local-lvm or mounted volume"
+  }
+  
 variable "vm_user" {
   type    = string
   default = "obelix"

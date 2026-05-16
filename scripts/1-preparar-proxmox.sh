@@ -12,7 +12,7 @@ readonly IMG_NAME="ubuntu-cloudimg-amd64.img"
 readonly TEMPLATE_DISK_SIZE="10G"
 
 ### Cloud-init VM Template
-readonly TEMPLATE_VMID="5000"
+readonly TEMPLATE_VMID="5000" # keep 5000 or update tofu accordingly
 readonly MASTER_VMID="999"
 
 readonly TEMPLATE_VM_NAME="ubuntu-cloud"
@@ -175,6 +175,7 @@ install_required_packages() {
 readonly SSH_DIR="$HOME/.ssh"
 readonly SSH_PRIVATE_KEY_PATH="${SSH_DIR}/${SSH_KEY_NAME}"
 readonly SSH_PUBLIC_KEY_PATH="${SSH_PRIVATE_KEY_PATH}.pub"
+readonly SSH_CONFIG_FILE="${SSH_DIR}/config"
 
 setup_ssh_keys() {
     CURRENT_STAGE="ssh"
@@ -184,8 +185,9 @@ setup_ssh_keys() {
     ensure_ssh_directory
     generate_ssh_keypair
     validate_ssh_permissions
+    configure_ssh_client
     load_ssh_public_key
-
+    
     msg_ok "Configuración SSH completada"
 }
 
@@ -223,6 +225,31 @@ validate_ssh_permissions() {
     chmod 644 "$SSH_PUBLIC_KEY_PATH"
 
     msg_ok "Permisos SSH verificados"
+}
+
+configure_ssh_client() {
+    if [[ ! -f "$SSH_CONFIG_FILE" ]]; then
+        touch "$SSH_CONFIG_FILE"
+
+        chmod 600 "$SSH_CONFIG_FILE"
+    fi
+
+    if grep -q "IdentityFile ${SSH_PRIVATE_KEY_PATH}" "$SSH_CONFIG_FILE"; then
+        msg_ok "La configuración SSH ya existe"
+
+        return
+    fi
+
+    msg_info "Configurando cliente SSH"
+
+    cat >> "$SSH_CONFIG_FILE" <<EOF
+
+Host *
+    IdentityFile ${SSH_PRIVATE_KEY_PATH}
+
+EOF
+
+    msg_ok "Cliente SSH configurado correctamente"
 }
 
 load_ssh_public_key() {
@@ -535,6 +562,20 @@ detect_management_ip() {
     msg_ok "IP de gestión detectada: $PROXMOX_IP"
 }
 
+detect_node_name() {
+    CURRENT_STAGE="node_name"
+
+    # Obtiene el hostname del sistema de forma local
+    PROXMOX_NODE=$(hostname)
+
+    if [[ -z "${PROXMOX_NODE:-}" ]]; then
+        msg_error "No se pudo detectar el nombre del nodo Proxmox"
+        exit 1
+    fi
+
+    msg_ok "Nombre del nodo detectado: $PROXMOX_NODE"
+}
+
 store_api_credentials() {
     CURRENT_STAGE="api_credentials"
 
@@ -544,6 +585,7 @@ store_api_credentials() {
 
     cat > "$API_CREDENTIALS_FILE" <<EOF
 PM_API_URL="https://${PROXMOX_IP}:8006/api2/json"
+PM_NODE_NAME="${PROXMOX_NODE}"
 PM_API_TOKEN_ID="${API_TOKEN_ID}"
 PM_API_TOKEN_SECRET="${API_TOKEN_SECRET}"
 SSH_PUBLIC_KEY="${SSH_PUBLIC_KEY_PATH}"
@@ -565,6 +607,7 @@ configure_proxmox_api_access() {
     create_api_token
 
     detect_management_ip
+    detect_node_name
     store_api_credentials
 
     msg_ok "Configuración API completada"

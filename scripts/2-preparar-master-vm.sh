@@ -187,13 +187,15 @@ setup_repository() {
 #######################
 ### Proxmox Secrets ###
 #######################
+readonly SSH_DIR="$HOME/.ssh"
+readonly SSH_PRIVATE_KEY_PATH="${SSH_DIR}/${SSH_KEY_NAME}"
+readonly SSH_PUBLIC_KEY_PATH="${SSH_PRIVATE_KEY_PATH}.pub"
 
 retrieve_proxmox_credentials() {
     CURRENT_STAGE="credentials"
 
-    if [[ -f "$TFVARS_PATH" ]]; then
-        msg_ok "El archivo secrets.tfvars ya existe"
-
+    if [[ -f "$API_CREDENTIALS_FILE" ]]; then
+        msg_ok "El archivo de credenciales API ya existe"
         return
     fi
 
@@ -206,6 +208,39 @@ retrieve_proxmox_credentials() {
     chmod 600 "$API_CREDENTIALS_FILE"
 
     msg_ok "Credenciales obtenidas correctamente"
+}
+
+retrieve_ssh_keys() {
+    CURRENT_STAGE="ssh_keys"
+
+    # Verificar si las llaves ya existen localmente para evitar sobrescribirlas
+    if [[ -f "$SSH_PRIVATE_KEY_PATH" && -f "$SSH_PUBLIC_KEY_PATH" ]]; then
+        msg_ok "Las llaves SSH ya existen en el nodo maestro"
+        return
+    fi
+
+    msg_info "Configurando entorno SSH local"
+    # Asegurar que el directorio .ssh existe con permisos ultra restrictivos (700)
+    mkdir -p "$SSH_DIR"
+    chmod 700 "$SSH_DIR"
+
+    msg_info "Copiando llaves SSH desde Proxmox"
+
+    # Copiar la clave privada
+    scp \
+        "${PROXMOX_USER}@${PROXMOX_HOST}:${SSH_PRIVATE_KEY_PATH}" \
+        "$SSH_PRIVATE_KEY_PATH"
+
+    # Copiar la clave pública
+    scp \
+        "${PROXMOX_USER}@${PROXMOX_HOST}:${SSH_PUBLIC_KEY_PATH}" \
+        "$SSH_PUBLIC_KEY_PATH"
+
+    # Aplicar los permisos estándar de seguridad SSH
+    chmod 600 "$SSH_PRIVATE_KEY_PATH"
+    chmod 644 "$SSH_PUBLIC_KEY_PATH"
+
+    msg_ok "Llaves SSH copiadas y configuradas correctamente"
 }
 
 read_config_value() {
@@ -226,12 +261,15 @@ load_proxmox_credentials() {
     msg_info "Cargando credenciales API"
 
     PM_API_URL=$(read_config_value "PM_API_URL")
+    PM_NODE_NAME=$(read_config_value "PM_NODE_NAME")
     PM_API_TOKEN_ID=$(read_config_value "PM_API_TOKEN_ID")
     PM_API_TOKEN_SECRET=$(read_config_value "PM_API_TOKEN_SECRET")
     SSH_PUBLIC_KEY=$(read_config_value "SSH_PUBLIC_KEY")
 
     if [[ -z "${PM_API_URL:-}" || \
           -z "${PM_API_TOKEN_ID:-}" || \
+          -z "${PM_NODE_NAME:-}" || \
+          -z "${SSH_PUBLIC_KEY:-}" || \
           -z "${PM_API_TOKEN_SECRET:-}" ]]; then
 
         msg_error "No se pudieron cargar las credenciales API"
@@ -254,7 +292,8 @@ generate_tfvars() {
     cat > "$TFVARS_PATH" <<EOF
 proxmox_api_token = "${PM_API_TOKEN_ID}=${PM_API_TOKEN_SECRET}"
 proxmox_endpoint  = "${PM_API_URL}"
-ssh_public_key   = "${SSH_PUBLIC_KEY}"
+node              = "${PM_NODE_NAME}"
+ssh_public_key    = "${SSH_PUBLIC_KEY}"
 EOF
 
     chmod 600 "$TFVARS_PATH"

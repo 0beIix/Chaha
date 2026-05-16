@@ -9,7 +9,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   initialization {
-    datastore_id = "local"
+    datastore_id = var.datastore_id
 
     # Cloud-init configuration
     user_account {
@@ -36,7 +36,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   disk {
-    datastore_id = "local"
+    datastore_id = var.datastore_id
     size         = var.disk
     interface    = "scsi0"
   }
