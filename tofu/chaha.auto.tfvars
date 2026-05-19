@@ -1,4 +1,5 @@
 proxmox_global_config = {
+  node         = "pve-test"
   dataset_id   = "local-lvm"
   sniff_bridge = "vmbr1"
 }

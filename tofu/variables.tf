@@ -24,7 +24,7 @@ variable "sensor_nodes" {
 
 variable "proxmox_global_config" {
   type = object({
-    dataset_id   = string
+    datastore_id   = string
     sniff_bridge = string
   })
 }
@@ -35,7 +35,7 @@ variable "proxmox_global_config" {
 #   default = "vmbr1"
 # }
 
-variable "proxmox_node"  {
+variable "node"  {
   type    = string 
   }
 

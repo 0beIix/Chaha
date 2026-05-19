@@ -227,15 +227,10 @@ retrieve_ssh_keys() {
 
     msg_info "Copiando llaves SSH desde Proxmox"
 
-    # Copiar la clave privada
-    scp \
-        "${PROXMOX_USER}@${PROXMOX_HOST}:${SSH_PRIVATE_KEY_PATH}" \
-        "$SSH_PRIVATE_KEY_PATH"
-
-    # Copiar la clave pública
-    scp \
-        "${PROXMOX_USER}@${PROXMOX_HOST}:${SSH_PUBLIC_KEY_PATH}" \
-        "$SSH_PUBLIC_KEY_PATH"
+    # Copiar directorio ssh (claves y config)
+    scp -r \
+        "${PROXMOX_USER}@${PROXMOX_HOST}:${SSH_DIR}" \
+        "$SSH_DIR"
 
     # Aplicar los permisos estándar de seguridad SSH
     chmod 600 "$SSH_PRIVATE_KEY_PATH"
