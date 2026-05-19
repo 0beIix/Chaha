@@ -22,28 +22,33 @@ variable "sensor_nodes" {
   description = "All Sensor nodes with resource specs"
 }
 
-variable "proxmox_global_config" {
-  type = object({
-    datastore_id   = string
-    sniff_bridge = string
-  })
-}
+# variable "proxmox_global_config" {
+#   type = map(object({
+#     datastore_id    = string
+#     sniff_bridge    = string
+#     node            = string
+#   }))
+# }
 
 # Global Defaults (optional)
-# variable "sniff_bridge" {
-#   type    = string
-#   default = "vmbr1"
-# }
+variable "vm_user"  {
+  type    = string 
+}
+
+variable "sniff_bridge" {
+  type    = string
+  default = "vmbr1"
+}
 
 variable "node"  {
   type    = string 
   }
 
-# variable "datastore_id" { 
-#   type = string 
-#   default = "local-lvm"
-#   description = "Datastore name like local-lvm or mounted volume"
-#   }
+variable "datastore_id" { 
+  type = string 
+  default = "local-lvm"
+  description = "Datastore name like local-lvm or mounted volume"
+  }
 
 # Secrets / Connection Info
 variable "proxmox_api_token" { 

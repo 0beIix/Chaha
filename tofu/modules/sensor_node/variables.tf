@@ -37,7 +37,6 @@ variable "datastore_id" {
   
 variable "vm_user" {
   type    = string
-  default = "chaha"
 }
 
 variable "vm_ip" {

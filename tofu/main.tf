@@ -11,14 +11,15 @@ module "wazuh_nodes" {
   for_each = var.wazuh_nodes
     name     = each.key
     vm_id    = each.value.vm_id
-    node     = each.value.proxmox_node
     cores    = each.value.cores
     memory   = each.value.memory
     disk     = each.value.disk
-    datastore_id = var.proxmox_global_config.datastore_id
     vm_ip    = each.value.ip
     vm_gw    = each.value.gw
-
+    
+    vm_user  = var.vm_user
+    datastore_id = var.datastore_id
+    node     = var.node
     ssh_public_key = var.ssh_public_key
 }
 
@@ -28,14 +29,15 @@ module "sensor_nodes" {
   for_each = var.sensor_nodes
     name     = each.key
     vm_id    = each.value.vm_id
-    node     = each.value.proxmox_node
     cores    = each.value.cores
     memory   = each.value.memory
     disk     = each.value.disk  
-    datastore_id = var.proxmox_global_config.datastore_id
     vm_ip    = each.value.ip
     vm_gw    = each.value.gw
 
+    vm_user  = var.vm_user
+    datastore_id = var.datastore_id
+    node     = var.node
     ssh_public_key = var.ssh_public_key
-    sniff_bridge   = var.proxmox_global_config.sniff_bridge
+    sniff_bridge   = var.sniff_bridge
 }
