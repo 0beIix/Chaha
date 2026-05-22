@@ -47,4 +47,8 @@ resource "proxmox_virtual_environment_vm" "node" {
     size         = var.disk
     interface    = "scsi0"
   }
+  agent {
+  enabled = true
+  timeout = "5m"
+  }
 }

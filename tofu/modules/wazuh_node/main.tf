@@ -44,5 +44,8 @@ resource "proxmox_virtual_environment_vm" "node" {
   network_device {
     bridge      = "vmbr0"
   }
-
+  agent {
+  enabled = true
+  timeout = "5m"
+  }
 }

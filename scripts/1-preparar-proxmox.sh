@@ -7,7 +7,9 @@ shopt -s inherit_errexit nullglob
 ###########################
 
 ### Cloud-init download
-readonly IMG_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+#readonly IMG_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+readonly IMG_URL="http://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
+#readonly IMG_URL="http://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
 readonly IMG_NAME="ubuntu-cloudimg-amd64.img"
 readonly TEMPLATE_DISK_SIZE="10G"
 
@@ -363,7 +365,11 @@ configure_template_hardware() {
         scsi0 \
         "$TEMPLATE_DISK_SIZE"
 
-    qm set "$TEMPLATE_VMID" --agent enabled=1
+    qm set "$TEMPLATE_VMID" \
+        --machine q35
+
+    qm set "$TEMPLATE_VMID" \
+        --agent enabled=1
 
     msg_ok "Hardware configurado correctamente"
 }
