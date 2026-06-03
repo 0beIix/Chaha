@@ -1,4 +1,6 @@
 ---
+# site.yml - Master Playbook para Chahã
+
 ## 1. PREPARACIÓN GLOBAL
 - name: Preparar dependencias en todos los nodos
   hosts: all
@@ -10,20 +12,41 @@
         cache_valid_time: 3600
 
 ## 2. DESPLIEGUE DEL NODO CENTRAL (MASTER)
-- name: Instalar y Configurar Wazuh Master AIO
+- name: Deploy Wazuh AIO Master
   hosts: wazuh_nodes
   become: yes
   roles:
-    - wazuh-server
+    # Official Wazuh Roles
+    - role: wazuh.ansible-wazuh-indexer
+    - role: wazuh.ansible-wazuh-manager
+    - role: wazuh.ansible-filebeat-oss
+    - role: wazuh.ansible-wazuh-dashboard
 
 ## 3. DESPLIEGUE DE SENSORES (IDS/NSM)
-- name: Instalar y Configurar Sensores de Red
+
+- name: Deploy Suricata (IDS)
   hosts: sensor_nodes
   become: yes
   roles:
-    - suricata
-    - zeek
-    - wazuh-agent
+    - role: suricata
+
+- name: Deploy Zeek (NSM)
+  hosts: sensor_nodes
+  become: yes
+  roles:
+    - role: zeek
+
+- name: Deploy Wazuh Agents (Sensors)
+  hosts: sensor_nodes
+  become: yes
+  vars:
+    # Point the agents to the newly built Master IP
+    wazuh_manager_address: "{{ hostvars[groups['wazuh_nodes'][0]]['ansible_host'] | default('192.168.1.X') }}"
+    wazuh_agent_enrollment:
+      enabled: true
+      # auth_pass: "AgentEnrollmentPassword123!" # <-- Comment this out
+  roles:
+    - role: wazuh.ansible-wazuh-agent
 
 ## 4. VERIFICACIÓN FINAL
 - name: Resumen del despliegue

@@ -33,6 +33,7 @@ variable "sensor_nodes" {
 # Global Defaults (optional)
 variable "vm_user"  {
   type    = string 
+  default = "chaha"
 }
 
 variable "sniff_bridge" {

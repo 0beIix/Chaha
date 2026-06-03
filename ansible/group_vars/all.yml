@@ -1,0 +1,13 @@
+indexer_admin_password: "YourSecurePassword123!"
+
+# Wazuh Manager API configuration
+wazuh_manager_config:
+  api:
+    bind_addr: "0.0.0.0"
+    port: 55000
+
+# Agent Enrollment Authentication
+wazuh_manager_authd:
+  enabled: true
+  use_password: false
+  # password: "AgentEnrollmentPassword123!"

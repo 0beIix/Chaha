@@ -7,3 +7,5 @@ wazuh_manager_ip: "192.168.100.41"
 
 # Red a monitorear por Suricata
 home_net: "192.168.100.0/24"
+
+# Wazuh Indexer & Dashboard Credentials

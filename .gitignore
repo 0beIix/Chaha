@@ -24,3 +24,6 @@ secrets.tfvars
 # --- OS Specific ---
 .DS_Store
 Thumbs.db
+
+# --- Wazuh ansible ---
+ansible/roles/wazuh-ansible/

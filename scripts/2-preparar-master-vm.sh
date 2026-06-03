@@ -11,13 +11,15 @@ trap 'msg_error "Falló en etapa: ${CURRENT_STAGE}"' ERR
 ### Global Variables ###
 ########################
 
-readonly REPO_URL="https://github.com/0beIix/Chaha.git"
-readonly REPO_PATH="/root/Chaha"
+readonly CHAHA_REPO_URL="https://github.com/0beIix/Chaha.git"
+readonly CHAHA_REPO_PATH="/root/Chaha"
+readonly WAZUH_ANSIBLE_REPO_URL="https://github.com/wazuh/wazuh-ansible.git"    
+readonly WAZUH_ANSIBLE_REPO_PATH="/root/Chaha/ansible/roles/wazuh-ansible"
 
 readonly SSH_KEY_NAME="puppet_master_ed25519"
 readonly API_CREDENTIALS_FILE="/root/.proxmox-api"
 
-readonly TFVARS_PATH="$REPO_PATH/tofu/secrets.tfvars"
+readonly TFVARS_PATH="$CHAHA_REPO_PATH/tofu/secrets.tfvars"
 
 readonly PROXMOX_USER="root"
 readonly PROXMOX_HOST="192.168.100.50"
@@ -65,7 +67,8 @@ main() {
     install_opentofu
     install_ansible
 
-    setup_repository
+    setup_chaha_repository
+    setup_wazuh-ansible_repository
 
     retrieve_proxmox_credentials
     load_proxmox_credentials
@@ -165,13 +168,13 @@ install_ansible() {
 ### Repository Setup ###
 ########################
 
-setup_repository() {
-    CURRENT_STAGE="repository"
+setup_chaha_repository() {
+    CURRENT_STAGE="chaha_repository"
 
-    if [[ -d "$REPO_PATH/.git" ]]; then
+    if [[ -d "$CHAHA_REPO_PATH/.git" ]]; then
         msg_info "Actualizando repositorio Chaha"
 
-        git -C "$REPO_PATH" pull
+        git -C "$CHAHA_REPO_PATH" pull
 
         msg_ok "Repositorio actualizado"
 
@@ -180,11 +183,30 @@ setup_repository() {
 
     msg_info "Clonando repositorio Chaha"
 
-    git clone "$REPO_URL" "$REPO_PATH"
+    git clone "$CHAHA_REPO_URL" "$CHAHA_REPO_PATH"
 
     msg_ok "Repositorio clonado correctamente"
 }
 
+setup_wazuh-ansible_repository() {
+    CURRENT_STAGE="wazuh-ansible_repository"
+
+    if [[ -d "$WAZUH_ANSIBLE_REPO_PATH/.git" ]]; then
+        msg_info "Actualizando repositorio Wazuh Ansible"
+
+        git -C "$WAZUH_ANSIBLE_REPO_PATH" pull
+
+        msg_ok "Repositorio actualizado"
+
+        return
+    fi
+
+    msg_info "Clonando repositorio Wazuh Ansible"
+
+    git clone "$WAZUH_ANSIBLE_REPO_URL" "$WAZUH_ANSIBLE_REPO_PATH"
+
+    msg_ok "Repositorio clonado correctamente"
+}
 #######################
 ### Proxmox Secrets ###
 #######################

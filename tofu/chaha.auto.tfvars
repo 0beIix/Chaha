@@ -1,7 +1,7 @@
 node         = "pve-test"
 datastore_id = "local-lvm"
 sniff_bridge = "vmbr1"
-vm_user = chaha
+vm_user = "chaha"
 
 
 sensor_nodes = {
