@@ -1,0 +1,5 @@
+- name: Deploy Suricata (IDS)
+  hosts: sensor_nodes
+  become: yes
+  roles:
+    - role: suricata

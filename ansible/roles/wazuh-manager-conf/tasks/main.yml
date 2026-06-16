@@ -1,0 +1,40 @@
+---
+
+# setup decoder and rules
+- name: Ensure Wazuh custom decoder directory exists
+  file:
+    path: "{{ wazuh_manager_ruleset_decoders_dir }}"
+    state: directory
+    owner: root
+    group: wazuh
+    mode: "0750"
+
+- name: Ensure Wazuh custom rules directory exists
+  file:
+    path: "{{ wazuh_manager_ruleset_rules_dir }}"
+    state: directory
+    owner: root
+    group: wazuh
+    mode: "0750"
+
+- name: Deploy Zeek decoder
+  template:
+    src: "{{ zeek_decoder_template }}"
+    dest: "{{ wazuh_manager_ruleset_decoders_dir }}/{{ zeek_decoder_dest }}"
+    owner: root
+    group: wazuh
+    mode: "0640"
+  notify: restart wazuh-manager
+
+- name: Deploy Zeek rules
+  template:
+    src: "{{ zeek_rules_template }}"
+    dest: "{{ wazuh_manager_ruleset_rules_dir }}/{{ zeek_rules_dest }}"
+    owner: root
+    group: wazuh
+    mode: "0640"
+  notify: restart wazuh-manager
+
+- name: Validate Wazuh manager configuration
+  command: /var/ossec/bin/wazuh-analysisd -t
+  changed_when: false

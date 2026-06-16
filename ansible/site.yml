@@ -3,7 +3,7 @@
 
 ## 1. PREPARACIÓN GLOBAL
 - name: Preparar dependencias en todos los nodos
-  hosts: all
+  hosts: sensor_nodes
   become: yes
   tasks:
     - name: Actualizar cache de APT
@@ -11,16 +11,24 @@
         update_cache: yes
         cache_valid_time: 3600
 
-## 2. DESPLIEGUE DEL NODO CENTRAL (MASTER)
-- name: Deploy Wazuh AIO Master
-  hosts: wazuh_nodes
-  become: yes
-  roles:
-    # Official Wazuh Roles
-    - role: wazuh.ansible-wazuh-indexer
-    - role: wazuh.ansible-wazuh-manager
-    - role: wazuh.ansible-filebeat-oss
-    - role: wazuh.ansible-wazuh-dashboard
+## 2. DESPLIEGUE DEL NODO CENTRAL (MASTER) - Wazuh AIO
+# - name: Deploy Wazuh All-in-One
+#   hosts: aio
+#   become: yes
+#   roles:
+#     - role: role/wazuh-ansible/roles/package-urls
+#     - role: role/wazuh-ansible/roles/wazuh-indexer
+#     - role: role/wazuh-ansible/roles/wazuh-manager
+#     - role: role/wazuh-ansible/roles/wazuh-dashboard
+#   vars:
+#     single_node: true
+#     # Use private IP for indexer node
+#     indexer_node_name: indexer
+#     indexer_ip: "{{ ansible_host }}"
+#     # Manager configuration
+#     wazuh_manager_ip: "{{ ansible_host }}"
+#     # Dashboard configuration  
+#     wazuh_dashboard_ip: "{{ ansible_host }}"
 
 ## 3. DESPLIEGUE DE SENSORES (IDS/NSM)
 
@@ -39,12 +47,6 @@
 - name: Deploy Wazuh Agents (Sensors)
   hosts: sensor_nodes
   become: yes
-  vars:
-    # Point the agents to the newly built Master IP
-    wazuh_manager_address: "{{ hostvars[groups['wazuh_nodes'][0]]['ansible_host'] | default('192.168.1.X') }}"
-    wazuh_agent_enrollment:
-      enabled: true
-      # auth_pass: "AgentEnrollmentPassword123!" # <-- Comment this out
   roles:
     - role: wazuh.ansible-wazuh-agent
 

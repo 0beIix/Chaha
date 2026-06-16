@@ -1,0 +1,5 @@
+---
+- name: restart wazuh-manager
+  systemd:
+    name: wazuh-manager
+    state: restarted

@@ -1,11 +1,25 @@
 ---
-# Interfaz que Tofu conectó a vmbr1 (usualmente eth1)
-sniff_interface: "eth1"
-
-# IP del manager (debe coincidir con la de wazuh_nodes en el host.ini)
-wazuh_manager_ip: "192.168.100.41"
+# Interfaz de red para la captura de tráfico dentro de la VM del sensor 
+sniff_interface: "enp6s19"
 
 # Red a monitorear por Suricata
 home_net: "192.168.100.0/24"
 
-# Wazuh Indexer & Dashboard Credentials
+# Configuración de Zeek
+zeek_repo_channel: "security:/zeek"
+zeek_ubuntu_version: "xUbuntu_24.04"
+zeek_package: "zeek"
+
+zeek_enable_json_logs: true
+
+### Wazuh Agent Configuration
+wazuh_manager_ip: "192.168.100.45"
+wazuh_agent_group: "default"
+
+wazuh_agent_package: "wazuh-agent"
+
+suricata_eve_log: "/var/log/suricata/eve.json"
+zeek_log_dir: "/opt/zeek/logs/current"
+
+wazuh_collect_suricata: true
+wazuh_collect_zeek: true

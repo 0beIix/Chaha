@@ -17,13 +17,25 @@
   shell: |
     ethtool -K {{ sniff_interface }} gro off lro off tso off gso off
   ignore_errors: yes
+
+- name: Habilitar modo promiscuo en la interfaz de monitoreo
+  shell: |
+    ip link set dev {{ sniff_interface }} promisc on && ip link set dev {{ sniff_interface }} up
+  ignore_errors: yes
   # Esto asegura que Suricata vea los paquetes originales, no "reensamblados" por la NIC.
 
-- name: Desplegar configuración de Suricata (suricata.yaml)
-  template:
-    src: suricata.yaml.j2
-    dest: /etc/suricata/suricata.yaml
-  notify: restart suricata
+### Configuración de Suricata
+- name: Configurerar HOME_NET
+  replace:
+    path: /etc/suricata/suricata.yaml
+    regexp: 'HOME_NET: "\[[^"]+\]"'
+    replace: 'HOME_NET: "[{{ home_net }}]"'
+
+- name: Configurar la interfaz de monitoreo
+  replace:
+    path: /etc/suricata/suricata.yaml
+    regexp: 'interface: .+'
+    replace: 'interface: {{ sniff_interface }}'
 
 - name: Actualizar reglas de Suricata (ET Open)
   command: suricata-update
@@ -36,16 +48,18 @@
     enabled: yes
     state: started
 
-- name: Configurar modo promiscuo persistente
+- name: Configurar interfaz de captura
   copy:
     dest: /etc/systemd/system/promisc-interface.service
     content: |
       [Unit]
-      Description=Modo Promiscuo en {{ sniff_interface }}
-      After=network.target
+      Description=Preparar interfaz {{ sniff_interface }} para Suricata
+      After=network-online.target
+      Wants=network-online.target
 
       [Service]
       Type=oneshot
+      ExecStart=/usr/sbin/ip link set dev {{ sniff_interface }} up
       ExecStart=/usr/sbin/ip link set dev {{ sniff_interface }} promisc on
       RemainAfterExit=yes
 

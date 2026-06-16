@@ -1,6 +1,4 @@
 ---
-- name: desplegar zeek
-  shell: |
-    /opt/zeek/bin/zeekctl install
-    /opt/zeek/bin/zeekctl stop
-    /opt/zeek/bin/zeekctl start
+
+- name: deploy zeek
+  command: /opt/zeek/bin/zeekctl deploy

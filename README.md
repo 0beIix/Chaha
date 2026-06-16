@@ -49,7 +49,9 @@ Ejecutar el setup script en el shell de Proxmox. Este paso deja el hipervisor li
 > Podes pero no necesitas editar las variables de la sección "Variables Editables" dentro del script antes de ejecutar.    
     
 ``` bash
-curl -sSL https://raw.githubusercontent.com/0beIix/Chaha/main/scripts/1-preparar-proxmox.sh | bash
+curl -sSLO https://raw.githubusercontent.com/0beIix/Chaha/main/scripts/1-preparar-proxmox.sh
+chmod +x 1-preparar-proxmox.sh
+./1-preparar-proxmox.sh
 ```
 
 - Genera llaves SSH y configura accesos.
@@ -61,7 +63,9 @@ curl -sSL https://raw.githubusercontent.com/0beIix/Chaha/main/scripts/1-preparar
 2. Preparación de la VM Maestra
 
 ``` bash
-curl -sSL https://raw.githubusercontent.com/0beIix/Chaha/main/scripts/2-preparar-master-vm.sh | bash
+curl -sSLO https://raw.githubusercontent.com/0beIix/Chaha/main/scripts/2-preparar-master-vm.sh
+chmod +x 2-preparar-master-vm.sh
+./2-preparar-master-vm.sh
 ```
 
 - Dentro de la nueva VM creada, ejecutar 2-preparar-master-vm.sh:

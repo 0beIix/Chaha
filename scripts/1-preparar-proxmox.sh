@@ -7,8 +7,7 @@ shopt -s inherit_errexit nullglob
 ###########################
 
 ### Cloud-init download
-#readonly IMG_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
-readonly IMG_URL="http://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
+readonly IMG_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
 #readonly IMG_URL="http://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
 readonly IMG_NAME="ubuntu-cloudimg-amd64.img"
 readonly TEMPLATE_DISK_SIZE="10G"
@@ -398,6 +397,32 @@ configure_cloudinit() {
     msg_ok "Cloud-Init configurado correctamente"
 }
 
+create_cloudinit_user_data() {
+    CURRENT_STAGE="cloudinit_userdata"
+
+    local snippets_dir="/var/lib/vz/snippets"
+    local user_data_path="${snippets_dir}/${TEMPLATE_VM_NAME}-user-data.yaml"
+
+    msg_info "Creando configuración Cloud-Init personalizada"
+
+    mkdir -p "$snippets_dir"
+
+    cat > "$user_data_path" <<EOF
+#cloud-config
+package_update: true
+packages:
+  - qemu-guest-agent
+
+runcmd:
+  - systemctl enable --now qemu-guest-agent
+EOF
+
+    qm set "$TEMPLATE_VMID" \
+        --cicustom "user=local:snippets/${TEMPLATE_VM_NAME}-user-data.yaml"
+
+    msg_ok "Cloud-Init user-data configurado correctamente"
+}
+
 convert_vm_to_template() {
     CURRENT_STAGE="template_conversion"
 
@@ -434,6 +459,7 @@ create_cloudinit_template() {
 
     configure_template_hardware
     configure_cloudinit
+    create_cloudinit_user_data
 
     convert_vm_to_template
 
@@ -652,6 +678,12 @@ iface ${MONITORING_BRIDGE} inet manual
 
 # --- CHAHA MONITORING BRIDGE END ---
 EOF
+
+    # Configuración de mirroring al bridge virtual para monitoreo IDS/NSM
+    tc qdisc add dev ${MONITORING_BRIDGE} ingress
+    tc filter add dev ${MONITORING_BRIDGE} ingress \
+        matchall \
+        action mirred egress mirror dev ${MONITORING_BRIDGE}
 
     ifreload -a || true
 

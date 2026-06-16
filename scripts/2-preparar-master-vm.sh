@@ -13,7 +13,7 @@ trap 'msg_error "Falló en etapa: ${CURRENT_STAGE}"' ERR
 
 readonly CHAHA_REPO_URL="https://github.com/0beIix/Chaha.git"
 readonly CHAHA_REPO_PATH="/root/Chaha"
-readonly WAZUH_ANSIBLE_REPO_URL="https://github.com/wazuh/wazuh-ansible.git"    
+readonly WAZUH_ANSIBLE_REPO_URL="--branch v4.14.5 https://github.com/wazuh/wazuh-ansible.git"    
 readonly WAZUH_ANSIBLE_REPO_PATH="/root/Chaha/ansible/roles/wazuh-ansible"
 
 readonly SSH_KEY_NAME="puppet_master_ed25519"
@@ -210,7 +210,7 @@ setup_wazuh-ansible_repository() {
 #######################
 ### Proxmox Secrets ###
 #######################
-readonly SSH_DIR="$HOME/.ssh"
+readonly SSH_DIR="/root/.ssh"
 readonly SSH_PRIVATE_KEY_PATH="${SSH_DIR}/${SSH_KEY_NAME}"
 readonly SSH_PUBLIC_KEY_PATH="${SSH_PRIVATE_KEY_PATH}.pub"
 

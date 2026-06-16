@@ -49,6 +49,6 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
   agent {
   enabled = true
-  timeout = "5m"
+  timeout = "3m"
   }
 }

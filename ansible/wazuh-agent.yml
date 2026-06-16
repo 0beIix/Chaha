@@ -1,0 +1,7 @@
+--- 
+
+- name: Deploy Wazuh Agents (Sensors)
+  hosts: sensor_nodes
+  become: yes
+  roles:
+    - role: wazuh-agent

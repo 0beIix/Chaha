@@ -1,39 +1,72 @@
 ---
-- name: Añadir repositorio de Zeek
-  apt_repository:
-    repo: "deb http://download.opensuse.org/repositories/network:/zeek/xUbuntu_24.04/ /"
-    state: present
-    update_cache: yes
-
-- name: Importar llave del repositorio Zeek
-  apt_key:
-    url: "https://download.opensuse.org/repositories/network:/zeek/xUbuntu_24.04/Release.key"
-    state: present
-
-- name: Instalar Zeek
+- name: Install Zeek dependencies
   apt:
-    name: zeek-lts  # Usamos la versión Long Term Support
+    name:
+      - curl
+      - gpg
+      - ca-certificates
+    state: present
+    update_cache: true
+
+- name: Add Zeek repository key
+  shell: |
+    curl -fsSL "https://download.opensuse.org/repositories/{{ zeek_repo_channel }}/{{ zeek_ubuntu_version }}/Release.key" \
+    | gpg --dearmor \
+    > /etc/apt/trusted.gpg.d/zeek.gpg
+  args:
+    creates: /etc/apt/trusted.gpg.d/zeek.gpg
+
+- name: Add Zeek repository
+  apt_repository:
+    repo: "deb http://download.opensuse.org/repositories/{{ zeek_repo_channel }}/{{ zeek_ubuntu_version }}/ /"
+    filename: zeek
+    state: present
+    update_cache: true
+
+- name: Install Zeek
+  apt:
+    name: "{{ zeek_package }}"
     state: present
 
-- name: Configurar interfaz en node.cfg
+- name: Add Zeek to global PATH
+  copy:
+    dest: /etc/profile.d/zeek.sh
+    mode: "0644"
+    content: |
+      export PATH=$PATH:/opt/zeek/bin
+
+- name: Configure Zeek node
   template:
     src: node.cfg.j2
     dest: /opt/zeek/etc/node.cfg
-  notify: desplegar zeek
+    owner: root
+    group: root
+    mode: "0644"
+  notify: deploy zeek
 
-- name: Configurar redes locales en networks.cfg
+- name: Configure Zeek local networks
   template:
     src: networks.cfg.j2
     dest: /opt/zeek/etc/networks.cfg
-  notify: desplegar zeek
+    owner: root
+    group: root
+    mode: "0644"
+  notify: deploy zeek
 
-- name: Añadir Zeek al PATH
+- name: Enable Zeek JSON logs
   lineinfile:
-    path: /home/{{ ansible_user }}/.bashrc
-    line: 'export PATH=$PATH:/opt/zeek/bin'
+    path: /opt/zeek/share/zeek/site/local.zeek
+    line: "@load policy/tuning/json-logs.zeek"
+    state: present
+  when: zeek_enable_json_logs
+  notify: deploy zeek
 
-- name: Configurar Cron para rotar logs de Zeek cada hora
+- name: Configure Zeek cron
   cron:
     name: "Zeek Log Cron"
     minute: "0"
     job: "/opt/zeek/bin/zeekctl cron"
+
+- name: Check Zeek configuration
+  command: /opt/zeek/bin/zeekctl check
+  changed_when: false

@@ -1,4 +1,15 @@
+---
+# Global variables for Wazuh AIO deployment
+
+# Indexer variables
 indexer_admin_password: "YourSecurePassword123!"
+single_node: true
+generate_certs: true
+instances:
+  aio_node:
+    name: indexer
+    ip: "{{ ansible_host }}"
+    role: aio
 
 # Wazuh Manager API configuration
 wazuh_manager_config:
@@ -10,4 +21,24 @@ wazuh_manager_config:
 wazuh_manager_authd:
   enabled: true
   use_password: false
-  # password: "AgentEnrollmentPassword123!"
+
+# Dashboard settings
+wazuh_dashboard_user: admin
+wazuh_dashboard_password: "YourSecurePassword123!"
+
+# Indexer network settings
+wazuh_indexer_network_host: "{{ ansible_host }}"
+wazuh_indexer_nodes:
+  - name: indexer
+    ip: "{{ ansible_host }}"
+
+
+# Wazuh Manager ruleset configuration
+wazuh_manager_ruleset_decoders_dir: "/var/ossec/etc/decoders"
+wazuh_manager_ruleset_rules_dir: "/var/ossec/etc/rules"
+
+zeek_decoder_template: "zeek-decoder.xml.j2"
+zeek_rules_template: "zeek-rules.xml.j2"
+
+zeek_decoder_dest: "zeek-decoder.xml"
+zeek_rules_dest: "zeek-rules.xml"
