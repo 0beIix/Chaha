@@ -8,7 +8,7 @@
 # Wazuh Deployment
 module "wazuh_nodes" {
   source   = "./modules/wazuh_node"
-  for_each = var.wazuh_nodes
+  for_each = local.wazuh_nodes
     name     = each.key
     vm_id    = each.value.vm_id
     cores    = each.value.cores

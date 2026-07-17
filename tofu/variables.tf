@@ -1,3 +1,19 @@
+variable "deployment_profile" {
+  type    = string
+  default = "aio"
+}
+
+variable "wazuh_profiles" {
+  type = map(map(object({
+    vm_id  = number
+    cores  = number
+    memory = number
+    disk   = number
+    ip     = string
+    gw     = string
+  })))
+}
+
 variable "wazuh_nodes" {
   type = map(object({
     vm_id  = number

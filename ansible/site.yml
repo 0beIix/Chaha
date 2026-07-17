@@ -3,7 +3,7 @@
 
 ## 1. PREPARACIÓN GLOBAL
 - name: Preparar dependencias en todos los nodos
-  hosts: sensor_nodes
+  hosts: all
   become: yes
   tasks:
     - name: Actualizar cache de APT
@@ -11,24 +11,47 @@
         update_cache: yes
         cache_valid_time: 3600
 
-## 2. DESPLIEGUE DEL NODO CENTRAL (MASTER) - Wazuh AIO
-# - name: Deploy Wazuh All-in-One
-#   hosts: aio
-#   become: yes
-#   roles:
-#     - role: role/wazuh-ansible/roles/package-urls
-#     - role: role/wazuh-ansible/roles/wazuh-indexer
-#     - role: role/wazuh-ansible/roles/wazuh-manager
-#     - role: role/wazuh-ansible/roles/wazuh-dashboard
-#   vars:
-#     single_node: true
-#     # Use private IP for indexer node
-#     indexer_node_name: indexer
-#     indexer_ip: "{{ ansible_host }}"
-#     # Manager configuration
-#     wazuh_manager_ip: "{{ ansible_host }}"
-#     # Dashboard configuration  
-#     wazuh_dashboard_ip: "{{ ansible_host }}"
+# Certificates generation
+- hosts: aio
+  roles:
+    - role: role/wazuh-ansible/roles/wazuh/wazuh-indexer
+      perform_installation: false
+  become: no
+  #become_user: root
+  vars:
+    indexer_node_master: true
+    instances:
+      node1:
+        name: node-1       # Important: must be equal to indexer_node_name.
+        ip: 127.0.0.1
+        role: indexer
+  tags:
+    - generate-certs
+
+# Single node
+- name: Deploy Wazuh All-in-One
+  hosts: aio
+  become: yes
+  become_user: root
+  roles:
+    - role: role/wazuh-ansible/roles/wazuh/package-urls
+    - role: role/wazuh-ansible/roles/wazuh/wazuh-indexer
+    - role: role/wazuh-ansible/roles/wazuh/wazuh-manager
+    - role: role/wazuh-ansible/roles/wazuh/wazuh-dashboard
+  vars:
+    single_node: true
+    minimum_master_nodes: 1
+    indexer_node_master: true
+    indexer_network_host: 127.0.0.1
+    filebeat_node_name: node-1
+    filebeat_output_indexer_hosts: 127.0.0.1
+    instances:
+      node1:
+        name: node-1       # Important: must be equal to indexer_node_name.
+        ip: 127.0.0.1
+        role: indexer
+    ansible_shell_allow_world_readable_temp: true
+
 
 ## 3. DESPLIEGUE DE SENSORES (IDS/NSM)
 
@@ -48,7 +71,7 @@
   hosts: sensor_nodes
   become: yes
   roles:
-    - role: wazuh.ansible-wazuh-agent
+    - role: wazuh-agent
 
 ## 4. VERIFICACIÓN FINAL
 - name: Resumen del despliegue

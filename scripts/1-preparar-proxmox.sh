@@ -397,19 +397,21 @@ configure_cloudinit() {
     msg_ok "Cloud-Init configurado correctamente"
 }
 
-create_cloudinit_user_data() {
-    CURRENT_STAGE="cloudinit_userdata"
+create_cloudinit_vendor_data() {
+    CURRENT_STAGE="cloudinit_vendor_data"
 
     local snippets_dir="/var/lib/vz/snippets"
-    local user_data_path="${snippets_dir}/${TEMPLATE_VM_NAME}-user-data.yaml"
+    local vendor_data_file="${TEMPLATE_VM_NAME}-vendor-data.yaml"
+    local vendor_data_path="${snippets_dir}/${vendor_data_file}"
 
-    msg_info "Creando configuración Cloud-Init personalizada"
+    msg_info "Creando vendor-data Cloud-Init"
 
     mkdir -p "$snippets_dir"
 
-    cat > "$user_data_path" <<EOF
+    cat > "$vendor_data_path" <<EOF
 #cloud-config
 package_update: true
+
 packages:
   - qemu-guest-agent
 
@@ -418,9 +420,9 @@ runcmd:
 EOF
 
     qm set "$TEMPLATE_VMID" \
-        --cicustom "user=local:snippets/${TEMPLATE_VM_NAME}-user-data.yaml"
+        --cicustom "vendor=local:snippets/${vendor_data_file}"
 
-    msg_ok "Cloud-Init user-data configurado correctamente"
+    msg_ok "Cloud-Init vendor-data configurado correctamente"
 }
 
 convert_vm_to_template() {
@@ -459,7 +461,7 @@ create_cloudinit_template() {
 
     configure_template_hardware
     configure_cloudinit
-    create_cloudinit_user_data
+    create_cloudinit_vendor_data
 
     convert_vm_to_template
 

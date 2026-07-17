@@ -42,6 +42,15 @@
   register: update_result
   changed_when: "'No changes' not in update_result.stdout"
 
+- name: Programar actualización diaria de reglas Suricata a las 05:00
+  cron:
+    name: "Actualizar reglas Suricata"
+    minute: "0"
+    hour: "5"
+    user: root
+    job: "/usr/bin/suricata-update >/var/log/suricata-update.log 2>&1"
+    state: present
+
 - name: Asegurar que Suricata inicie al boot
   service:
     name: suricata
@@ -71,3 +80,4 @@
     name: promisc-interface
     enabled: yes
     state: started
+

@@ -1,0 +1,25 @@
+--- 
+
+- name: Deploy Suricata (IDS)
+  hosts: sensor_nodes
+  become: yes
+  roles:
+    - role: suricata
+
+- name: Deploy Zeek (NSM)
+  hosts: sensor_nodes
+  become: yes
+  roles:
+    - role: zeek
+
+- name: Deploy Wazuh Agents (Sensors)
+  hosts: sensor_nodes
+  become: yes
+  roles:
+    - role: wazuh-agent
+
+- name: Deploy Wazuh Manager Configuration
+  hosts: aio
+  become: yes
+  roles:
+    - role: wazuh-manager-conf

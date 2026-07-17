@@ -13,7 +13,8 @@ trap 'msg_error "Falló en etapa: ${CURRENT_STAGE}"' ERR
 
 readonly CHAHA_REPO_URL="https://github.com/0beIix/Chaha.git"
 readonly CHAHA_REPO_PATH="/root/Chaha"
-readonly WAZUH_ANSIBLE_REPO_URL="--branch v4.14.5 https://github.com/wazuh/wazuh-ansible.git"    
+readonly WAZUH_ANSIBLE_REPO_URL="https://github.com/wazuh/wazuh-ansible.git"
+readonly WAZUH_ANSIBLE_REPO_BRANCH="v4.14.5"    
 readonly WAZUH_ANSIBLE_REPO_PATH="/root/Chaha/ansible/roles/wazuh-ansible"
 
 readonly SSH_KEY_NAME="puppet_master_ed25519"
@@ -22,7 +23,7 @@ readonly API_CREDENTIALS_FILE="/root/.proxmox-api"
 readonly TFVARS_PATH="$CHAHA_REPO_PATH/tofu/secrets.tfvars"
 
 readonly PROXMOX_USER="root"
-readonly PROXMOX_HOST="192.168.100.50"
+readonly PROXMOX_HOST="192.168.100.5"
 readonly PROXMOX_API_FILE="/root/.proxmox-api"
 
 ########################
@@ -71,6 +72,8 @@ main() {
     setup_wazuh-ansible_repository
 
     retrieve_proxmox_credentials
+    retrieve_ssh_keys
+    configure_ssh_client
     load_proxmox_credentials
 
     generate_tfvars
@@ -194,16 +197,21 @@ setup_wazuh-ansible_repository() {
     if [[ -d "$WAZUH_ANSIBLE_REPO_PATH/.git" ]]; then
         msg_info "Actualizando repositorio Wazuh Ansible"
 
-        git -C "$WAZUH_ANSIBLE_REPO_PATH" pull
+        git -C "$WAZUH_ANSIBLE_REPO_PATH" fetch --all --tags --prune
 
-        msg_ok "Repositorio actualizado"
+        git -C "$WAZUH_ANSIBLE_REPO_PATH" checkout "$WAZUH_ANSIBLE_REPO_BRANCH"
+
+        msg_ok "Repositorio actualizado en referencia ${WAZUH_ANSIBLE_REPO_BRANCH}"
 
         return
     fi
 
     msg_info "Clonando repositorio Wazuh Ansible"
 
-    git clone "$WAZUH_ANSIBLE_REPO_URL" "$WAZUH_ANSIBLE_REPO_PATH"
+    git clone \
+        --branch "$WAZUH_ANSIBLE_REPO_BRANCH" \
+        "$WAZUH_ANSIBLE_REPO_URL" \
+        "$WAZUH_ANSIBLE_REPO_PATH"
 
     msg_ok "Repositorio clonado correctamente"
 }
@@ -211,6 +219,7 @@ setup_wazuh-ansible_repository() {
 ### Proxmox Secrets ###
 #######################
 readonly SSH_DIR="/root/.ssh"
+readonly PROXMOX_SSH_DIR="/root/.ssh"
 readonly SSH_PRIVATE_KEY_PATH="${SSH_DIR}/${SSH_KEY_NAME}"
 readonly SSH_PUBLIC_KEY_PATH="${SSH_PRIVATE_KEY_PATH}.pub"
 
@@ -236,29 +245,48 @@ retrieve_proxmox_credentials() {
 retrieve_ssh_keys() {
     CURRENT_STAGE="ssh_keys"
 
-    # Verificar si las llaves ya existen localmente para evitar sobrescribirlas
     if [[ -f "$SSH_PRIVATE_KEY_PATH" && -f "$SSH_PUBLIC_KEY_PATH" ]]; then
         msg_ok "Las llaves SSH ya existen en el nodo maestro"
         return
     fi
 
     msg_info "Configurando entorno SSH local"
-    # Asegurar que el directorio .ssh existe con permisos ultra restrictivos (700)
+
     mkdir -p "$SSH_DIR"
     chmod 700 "$SSH_DIR"
 
     msg_info "Copiando llaves SSH desde Proxmox"
 
-    # Copiar directorio ssh (claves y config)
-    scp -rp \
-        "${PROXMOX_USER}@${PROXMOX_HOST}:${SSH_DIR}/*" \
-        "$SSH_DIR"
+    scp \
+        "${PROXMOX_USER}@${PROXMOX_HOST}:${PROXMOX_SSH_DIR}/${SSH_KEY_NAME}" \
+        "$SSH_PRIVATE_KEY_PATH"
 
-    # Aplicar los permisos estándar de seguridad SSH
+    scp \
+        "${PROXMOX_USER}@${PROXMOX_HOST}:${PROXMOX_SSH_DIR}/${SSH_KEY_NAME}.pub" \
+        "$SSH_PUBLIC_KEY_PATH"
+
     chmod 600 "$SSH_PRIVATE_KEY_PATH"
     chmod 644 "$SSH_PUBLIC_KEY_PATH"
 
     msg_ok "Llaves SSH copiadas y configuradas correctamente"
+}
+
+configure_ssh_client() {
+    local ssh_config="${SSH_DIR}/config"
+
+    touch "$ssh_config"
+    chmod 600 "$ssh_config"
+
+    if ! grep -q "IdentityFile ${SSH_PRIVATE_KEY_PATH}" "$ssh_config"; then
+        cat >> "$ssh_config" <<EOF
+
+Host *
+    IdentityFile ${SSH_PRIVATE_KEY_PATH}
+    IdentitiesOnly yes
+EOF
+    fi
+
+    msg_ok "Configuración SSH cliente actualizada"
 }
 
 read_config_value() {
