@@ -105,11 +105,24 @@ readonly REQUIRED_PACKAGES=(
 install_required_packages() {
     CURRENT_STAGE="packages"
 
-    msg_info "Instalando dependencias básicas"
+    msg_info "Instalando dependencias requeridas"
 
     apt-get update -qq
 
-    apt-get install -y "${REQUIRED_PACKAGES[@]}"
+    local missing_packages=()
+
+    for package in "${REQUIRED_PACKAGES[@]}"; do
+        if ! dpkg -s "$package" >/dev/null 2>&1; then
+            missing_packages+=("$package")
+        fi
+    done
+
+    if [[ ${#missing_packages[@]} -eq 0 ]]; then
+        msg_ok "Todas las dependencias ya están instaladas"
+        return
+    fi
+
+    apt-get install -y "${missing_packages[@]}"
 
     msg_ok "Dependencias instaladas correctamente"
 }

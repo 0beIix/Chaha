@@ -14,18 +14,6 @@ variable "wazuh_profiles" {
   })))
 }
 
-variable "wazuh_nodes" {
-  type = map(object({
-    vm_id  = number
-    cores  = number
-    memory = number
-    disk   = number
-    ip     = string
-    gw     = string
-  }))
-  description = "All Wazuh nodes with resource specs"
-}
-
 variable "sensor_nodes" {
   type = map(object({
     vm_id  = number

@@ -14,7 +14,7 @@
 # Certificates generation
 - hosts: aio
   roles:
-    - role: role/wazuh-ansible/roles/wazuh/wazuh-indexer
+    - role: roles/wazuh-ansible/roles/wazuh/wazuh-indexer
       perform_installation: false
   become: no
   #become_user: root
@@ -34,17 +34,18 @@
   become: yes
   become_user: root
   roles:
-    - role: role/wazuh-ansible/roles/wazuh/package-urls
-    - role: role/wazuh-ansible/roles/wazuh/wazuh-indexer
-    - role: role/wazuh-ansible/roles/wazuh/wazuh-manager
-    - role: role/wazuh-ansible/roles/wazuh/wazuh-dashboard
+    - role: roles/wazuh-ansible/roles/wazuh/wazuh-indexer
+    - role: roles/wazuh-ansible/roles/wazuh/ansible-wazuh-manager
+    - role: roles/wazuh-ansible/roles/wazuh/ansible-filebeat-oss
+    - role: roles/wazuh-ansible/roles/wazuh/wazuh-dashboard
   vars:
     single_node: true
     minimum_master_nodes: 1
     indexer_node_master: true
     indexer_network_host: 127.0.0.1
     filebeat_node_name: node-1
-    filebeat_output_indexer_hosts: 127.0.0.1
+    filebeat_output_indexer_hosts: 
+    - 127.0.0.1
     instances:
       node1:
         name: node-1       # Important: must be equal to indexer_node_name.
@@ -72,6 +73,12 @@
   become: yes
   roles:
     - role: wazuh-agent
+
+- name: Deploy Wazuh Manager Configuration
+  hosts: aio
+  become: yes
+  roles:
+    - role: wazuh-manager-conf
 
 ## 4. VERIFICACIÓN FINAL
 - name: Resumen del despliegue

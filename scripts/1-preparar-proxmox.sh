@@ -15,7 +15,7 @@ readonly TEMPLATE_DISK_SIZE="10G"
 ### Cloud-init VM Template
 readonly TEMPLATE_VMID="5000" # keep 5000 or update tofu accordingly
 readonly MASTER_VMID="999"
-
+readonly CLOUD_INIT_TIMEZONE="America/Asuncion"
 readonly TEMPLATE_VM_NAME="ubuntu-cloud"
 readonly MASTER_VM_NAME="Puppet-Master"
 
@@ -411,6 +411,7 @@ create_cloudinit_vendor_data() {
     cat > "$vendor_data_path" <<EOF
 #cloud-config
 package_update: true
+timezone: ${CLOUD_INIT_TIMEZONE}
 
 packages:
   - qemu-guest-agent
