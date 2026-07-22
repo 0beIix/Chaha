@@ -27,3 +27,6 @@ Thumbs.db
 
 # --- Wazuh ansible ---
 ansible/roles/wazuh-ansible/
+
+# --- Misc --- 
+sync.sh

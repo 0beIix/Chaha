@@ -1,0 +1,6 @@
+---
+- name: Deploy Zeek (NSM)
+  hosts: sensor_nodes
+  become: yes
+  roles:
+    - role: zeek

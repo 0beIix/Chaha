@@ -14,25 +14,25 @@
 <decoder name="zeek_decoder">
   <parent>json</parent>
   <regex>"id.orig_h":"(\d+.\d+.\d+.\d+)"</regex>
-  <order>src_ip</order>
+  <order>srcip</order>
 </decoder>
 
 <decoder name="zeek_decoder">
   <parent>json</parent>
   <regex>"id.orig_p":(\d+)</regex>​
-  <order>src_port</order>
+  <order>srcport</order>
 </decoder>
 
 <decoder name="zeek_decoder">
   <parent>json</parent>
   <regex>"id.resp_h":"(\d+.\d+.\d+.\d+)"</regex>​
-  <order>dst_ip</order>
+  <order>dstip</order>
 </decoder>
 
 <decoder name="zeek_decoder">
   <parent>json</parent>
   <regex>"id.resp_p":(\d+)</regex>
-  <order>dst_port</order>
+  <order>dstport</order>
 </decoder>
 
 <decoder name="zeek_decoder">

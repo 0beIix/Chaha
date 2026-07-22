@@ -1,3 +1,4 @@
+---
 - name: Deploy Suricata (IDS)
   hosts: sensor_nodes
   become: yes
