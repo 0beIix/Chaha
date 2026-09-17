@@ -1,50 +1,200 @@
-<group name="zeek,">
+<group name="zeek,chaha,">
+  <!-- Chaha v1 - replaces previous Zeek rules. Native JSON decoder only. Root path must match agent location. -->
   <rule id="100900" level="0">
     <decoded_as>json</decoded_as>
-    <description>Zeek alerts</description>
+    <location type="pcre2">/opt/zeek/logs/current/(?:conn|dns|http|ssl|notice)\.log$</location>
+    <description>Zeek JSON event</description>
   </rule>
-
-  <rule id="100901" level="5">
+  <rule id="100901" level="3">
     <if_sid>100900</if_sid>
-    <field name="dnsquery">\w+.</field>
-    <dstport type="pcre2">^53$</dstport>
-    <field name="resolved_by">\d+.\d+.\d+.\d+</field>
-    <description>Zeek: DNS Query $(dnsquery) attempted from source ip $(srcip) source port $(srcport) resolved to IP(s) $(resolved_by)</description>
+    <location type="pcre2">/dns\.log$</location>
+    <field name="query" type="pcre2">^.+$</field>
+    <description>Zeek DNS: $(query) from $(id.orig_h) to $(id.resp_h)</description>
+    <group>zeek_dns,zeek_visibility,</group>
   </rule>
-
   <rule id="100902" level="0">
-    <if_sid>100900</if_sid>
-    <srcport>5353</srcport>
-    <description>Zeek: Normal mDNS traffic - $(dnsquery) from source ip $(srcip). Generally benign. Investigate only if the source is unexpected. </description>
+    <if_sid>100901</if_sid>
+    <field name="proto" type="pcre2">^udp$</field>
+    <field name="id.resp_p" type="pcre2">^5353$</field>
+    <field name="id.resp_h" type="pcre2">^(?:224\.0\.0\.251|[fF][fF]02::[fF][bB])$</field>
+    <description>Zeek mDNS multicast query</description>
   </rule>
-
-  <rule id="100903" level="7">
-    <if_sid>100900</if_sid>
-    <field name="connection_state">REJ</field>
-    <description>Zeek: Connection from $(srcip) to $(dstip) $(dstport) rejected</description>
+  <rule id="100920" level="4">
+    <if_sid>100901</if_sid>
+    <field name="rcode_name" type="pcre2">^NXDOMAIN$</field>
+    <description>Zeek DNS: NXDOMAIN for $(query) from $(id.orig_h)</description>
+    <group>zeek_dns_errors,</group>
   </rule>
-
-  <rule id="100904" level="10" frequency="5" timeframe="20">
+  <rule id="100921" level="6" frequency="20" timeframe="60">
+    <if_sid>100920</if_sid>
+    <if_matched_sid>100920</if_matched_sid>
+    <same_field>id.orig_h</same_field>
+    <description>Zeek DNS: repeated NXDOMAIN responses for $(id.orig_h); investigate configuration or suspicious queries</description>
+    <group>zeek_dns_errors,zeek_correlation,</group>
+  </rule>
+  <rule id="100922" level="4">
+    <if_sid>100901</if_sid>
+    <field name="rcode_name" type="pcre2">^SERVFAIL$</field>
+    <description>Zeek DNS: SERVFAIL from resolver $(id.resp_h) for $(query)</description>
+    <group>zeek_dns_errors,</group>
+  </rule>
+  <rule id="100923" level="6" frequency="20" timeframe="60">
+    <if_sid>100922</if_sid>
+    <if_matched_sid>100922</if_matched_sid>
+    <same_field>id.resp_h</same_field>
+    <description>Zeek DNS: repeated SERVFAIL responses from resolver $(id.resp_h)</description>
+    <group>zeek_dns_errors,zeek_correlation,</group>
+  </rule>
+  <rule id="100924" level="5">
+    <if_sid>100901</if_sid>
+    <field name="rcode_name" type="pcre2">^REFUSED$</field>
+    <description>Zeek DNS: query refused by $(id.resp_h) for $(query)</description>
+    <group>zeek_dns_errors,</group>
+  </rule>
+  <rule id="100909" level="3">
+    <if_sid>100900</if_sid>
+    <location type="pcre2">/conn\.log$</location>
+    <field name="conn_state" type="pcre2">^.+$</field>
+    <description>Zeek connection: $(id.orig_h):$(id.orig_p) to $(id.resp_h):$(id.resp_p), state $(conn_state)</description>
+    <group>zeek_conn,zeek_visibility,</group>
+  </rule>
+  <rule id="100903" level="5">
+    <if_sid>100909</if_sid>
+    <field name="proto" type="pcre2">^tcp$</field>
+    <field name="conn_state" type="pcre2">^REJ$</field>
+    <description>Zeek TCP: connection rejected from $(id.orig_h) to $(id.resp_h):$(id.resp_p)</description>
+    <group>zeek_connection_errors,</group>
+  </rule>
+  <rule id="100904" level="6" frequency="10" timeframe="60">
+    <if_sid>100903</if_sid>
     <if_matched_sid>100903</if_matched_sid>
-    <description>Zeek: Multiple rejected connections from $(srcip) (5+ in 20s - possible port scan activity)</description>
+    <same_field>id.orig_h</same_field>
+    <description>Zeek TCP: repeated rejected connections from $(id.orig_h); investigate retries or reconnaissance</description>
+    <group>zeek_connection_errors,zeek_correlation,</group>
   </rule>
-
-<!-- Suppresses alerts for DNS queries to the Wazuh CTI domain. -->
-  <rule id="100905" level="0">
-    <if_sid>100900</if_sid>
-    <field name="dnsquery">cti.wazuh.com</field>
-    <description>Zeek: DNS Query $(dnsquery) exclude</description>
+  <rule id="100925" level="4">
+    <if_sid>100909</if_sid>
+    <field name="proto" type="pcre2">^tcp$</field>
+    <field name="conn_state" type="pcre2">^S0$</field>
+    <description>Zeek TCP: SYN observed without reply from $(id.orig_h) to $(id.resp_h):$(id.resp_p)</description>
+    <group>zeek_connection_errors,</group>
   </rule>
-
-  <rule id="100906" level="8">
-    <if_sid>100900</if_sid>
-    <field name="ssl_validation_status">self signed certificate</field>
-    <description>Zeek: Client $(srcip) connected to a server with self-signed certificate $(dstip)</description>
+  <rule id="100926" level="6" frequency="20" timeframe="60">
+    <if_sid>100925</if_sid>
+    <if_matched_sid>100925</if_matched_sid>
+    <same_field>id.orig_h</same_field>
+    <description>Zeek TCP: repeated connections without observed replies from $(id.orig_h)</description>
+    <group>zeek_connection_errors,zeek_correlation,</group>
   </rule>
-
-  <rule id="100907" level="12">
+  <rule id="100910" level="7">
     <if_sid>100900</if_sid>
-    <field name="ssl_validation_status">certificate has expired</field>
-    <description>Zeek: Client $(srcip) connected to a server with expired certificate $(dstip)</description>
+    <location type="pcre2">/notice\.log$</location>
+    <field name="note" type="pcre2">^.+$</field>
+    <description>Zeek notice: $(note) - $(msg)</description>
+    <group>zeek_notice,</group>
+  </rule>
+  <rule id="100911" level="4">
+    <if_sid>100910</if_sid>
+    <field name="note" type="pcre2">^CaptureLoss::Too_Much_Loss$</field>
+    <description>Zeek sensor: estimated capture loss - $(msg)</description>
+    <group>zeek_sensor_health,</group>
+  </rule>
+  <rule id="100912" level="8">
+    <if_sid>100910</if_sid>
+    <field name="note" type="pcre2">^Scan::(?:Port_Scan|Address_Scan)$</field>
+    <description>Zeek scan notice: $(note) - $(msg)</description>
+    <group>zeek_reconnaissance,</group>
+  </rule>
+  <rule id="100913" level="10">
+    <if_sid>100910</if_sid>
+    <field name="note" type="pcre2">^SSH::Password_Guessing$</field>
+    <description>Zeek SSH: suspected password guessing - $(msg)</description>
+    <group>zeek_authentication,</group>
+  </rule>
+  <rule id="100914" level="12">
+    <if_sid>100910</if_sid>
+    <field name="note" type="pcre2">^SSH::Login_By_Password_Guesser$</field>
+    <description>Zeek SSH: inferred login by previously identified password guesser - $(msg)</description>
+    <group>zeek_authentication,</group>
+  </rule>
+  <rule id="100915" level="4">
+    <if_sid>100910</if_sid>
+    <field name="note" type="pcre2">^SSL::Invalid_Server_Cert$</field>
+    <description>Zeek TLS: certificate validation notice - $(msg)</description>
+    <group>zeek_tls_configuration,</group>
+  </rule>
+  <rule id="100930" level="3">
+    <if_sid>100900</if_sid>
+    <location type="pcre2">/http\.log$</location>
+    <field name="method" type="pcre2">^.+$</field>
+    <description>Zeek HTTP: $(method) $(host)$(uri) from $(id.orig_h)</description>
+    <group>zeek_http,zeek_visibility,</group>
+  </rule>
+  <rule id="100931" level="5">
+    <if_sid>100930</if_sid>
+    <field name="status_code" type="pcre2">^(?:401|403)$</field>
+    <description>Zeek HTTP: access challenge or denial $(status_code) for $(id.orig_h) at $(id.resp_h)</description>
+    <group>zeek_http_errors,</group>
+  </rule>
+  <rule id="100932" level="10" frequency="20" timeframe="60">
+    <if_sid>100931</if_sid>
+    <if_matched_sid>100931</if_matched_sid>
+    <same_field>id.orig_h</same_field>
+    <same_field>id.resp_h</same_field>
+    <description>Zeek HTTP: repeated 401/403 responses for $(id.orig_h) at $(id.resp_h)</description>
+    <group>zeek_http_errors,zeek_correlation,</group>
+  </rule>
+  <rule id="100933" level="4">
+    <if_sid>100930</if_sid>
+    <field name="status_code" type="pcre2">^404$</field>
+    <description>Zeek HTTP: resource not found at $(host)$(uri)</description>
+    <group>zeek_http_errors,</group>
+  </rule>
+  <rule id="100934" level="6" frequency="30" timeframe="60">
+    <if_sid>100933</if_sid>
+    <if_matched_sid>100933</if_matched_sid>
+    <same_field>id.orig_h</same_field>
+    <same_field>id.resp_h</same_field>
+    <description>Zeek HTTP: repeated 404 responses for $(id.orig_h) at $(id.resp_h)</description>
+    <group>zeek_http_errors,zeek_correlation,</group>
+  </rule>
+  <rule id="100935" level="4">
+    <if_sid>100930</if_sid>
+    <field name="status_code" type="pcre2">^5[0-9]{2}$</field>
+    <description>Zeek HTTP: server error $(status_code) at $(id.resp_h)</description>
+    <group>zeek_http_errors,</group>
+  </rule>
+  <rule id="100936" level="6" frequency="20" timeframe="60">
+    <if_sid>100935</if_sid>
+    <if_matched_sid>100935</if_matched_sid>
+    <same_field>id.resp_h</same_field>
+    <same_field>id.resp_p</same_field>
+    <description>Zeek HTTP: repeated server errors at $(id.resp_h):$(id.resp_p)</description>
+    <group>zeek_http_errors,zeek_correlation,</group>
+  </rule>
+  <rule id="100940" level="3">
+    <if_sid>100900</if_sid>
+    <location type="pcre2">/ssl\.log$</location>
+    <field name="uid" type="pcre2">^.+$</field>
+    <description>Zeek TLS: observed session from $(id.orig_h) to $(id.resp_h):$(id.resp_p)</description>
+    <group>zeek_tls,zeek_visibility,</group>
+  </rule>
+  <rule id="100906" level="4">
+    <if_sid>100940</if_sid>
+    <field name="validation_status" type="pcre2">^self signed certificate(?: in certificate chain)?$</field>
+    <description>Zeek TLS: self-signed certificate observed at $(id.resp_h):$(id.resp_p)</description>
+    <group>zeek_tls_configuration,</group>
+  </rule>
+  <rule id="100907" level="4">
+    <if_sid>100940</if_sid>
+    <field name="validation_status" type="pcre2">^certificate has expired$</field>
+    <description>Zeek TLS: expired certificate observed at $(id.resp_h):$(id.resp_p)</description>
+    <group>zeek_tls_configuration,</group>
+  </rule>
+  <rule id="100941" level="4">
+    <if_sid>100940</if_sid>
+    <field name="version" type="pcre2">^(?:SSLv2|SSLv3|TLSv10|TLSv11)$</field>
+    <description>Zeek TLS: legacy negotiated version $(version) at $(id.resp_h):$(id.resp_p)</description>
+    <group>zeek_tls_configuration,</group>
   </rule>
 </group>

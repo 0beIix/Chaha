@@ -40,4 +40,51 @@
     <log_format>syslog</log_format>
     <location>/var/log/syslog</location>
   </localfile>
+
+<!-- LOGS DE RED -->
+  <localfile>
+    <log_format>json</log_format>
+    <location>/opt/zeek/logs/current/conn.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>json</log_format>
+    <location>/opt/zeek/logs/current/dns.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>json</log_format>
+    <location>/opt/zeek/logs/current/http.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>json</log_format>
+    <location>/opt/zeek/logs/current/ssl.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>json</log_format>
+    <location>/opt/zeek/logs/current/files.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>json</log_format>
+    <location>/opt/zeek/logs/current/notice.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>json</log_format>
+    <location>/opt/zeek/logs/current/weird.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>json</log_format>
+    <location>/opt/zeek/logs/current/known_hosts.log</location>
+  </localfile>
+
+  <localfile>
+    <log_format>json</log_format>
+    <location>{{ suricata_eve_log }}</location>
+  </localfile>
+
 </ossec_config>

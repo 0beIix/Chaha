@@ -13,7 +13,7 @@ zeek_package: "zeek"
 zeek_enable_json_logs: true
 
 ### Wazuh Agent Configuration
-wazuh_manager_ip: "192.168.100.45"
+wazuh_manager_ip: "{{ hostvars['wazuh-master'].ansible_host }}"
 wazuh_agent_group: "default"
 
 wazuh_agent_package: "wazuh-agent"

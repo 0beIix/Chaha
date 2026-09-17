@@ -1,0 +1,6 @@
+---
+- name: Deploy Wazuh Manager Configuration
+  hosts: aio
+  become: yes
+  roles:
+    - role: wazuh-manager-conf
