@@ -1,0 +1,18 @@
+---
+# Fallbacks for standalone role reuse. Configure this project in group_vars/aio.yml.
+wazuh_storage_archive_days: 7
+wazuh_storage_archive_min_days: 2
+wazuh_storage_alert_days: 14
+wazuh_storage_alert_min_days: 7
+wazuh_storage_index_days: 30
+wazuh_storage_index_min_days: 7
+wazuh_storage_trigger: 80
+wazuh_storage_target: 70
+wazuh_storage_interval: 5min
+wazuh_storage_indexer_url: https://127.0.0.1:9200
+wazuh_storage_indexer_ca: /etc/wazuh-indexer/certs/root-ca.pem
+wazuh_storage_indexer_username: admin
+wazuh_storage_indexer_password: "{{ indexer_admin_password }}"
+wazuh_storage_log_root: /var/ossec/logs
+wazuh_storage_index_path: /var/lib/wazuh-indexer
+wazuh_storage_journal_max_use: 200M

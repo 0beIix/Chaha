@@ -1,7 +1,7 @@
 # Global variables for Wazuh AIO deployment
 
-indexer_admin_password: "YourSecurePassword123!"
-dashboard_password: "YourSecurePassword123!"
+indexer_admin_password: "changeme"
+dashboard_password: "changeme"
 single_node: true
 generate_certs: true
 

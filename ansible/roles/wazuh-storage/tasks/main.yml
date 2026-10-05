@@ -1,0 +1,98 @@
+---
+- name: Validate storage retention limits
+  ansible.builtin.assert:
+    that:
+      - wazuh_storage_archive_min_days | int >= 1
+      - wazuh_storage_archive_days | int >= wazuh_storage_archive_min_days | int
+      - wazuh_storage_alert_min_days | int >= 1
+      - wazuh_storage_alert_days | int >= wazuh_storage_alert_min_days | int
+      - wazuh_storage_index_min_days | int >= 1
+      - wazuh_storage_index_days | int >= wazuh_storage_index_min_days | int
+      - wazuh_storage_target | int > 0
+      - wazuh_storage_trigger | int > wazuh_storage_target | int
+      - wazuh_storage_trigger | int < 95
+
+- name: Install Python runtime
+  ansible.builtin.package:
+    name: python3
+    state: present
+
+- name: Install storage cleanup program
+  ansible.builtin.copy:
+    src: wazuh-storage.py
+    dest: /usr/local/sbin/wazuh-storage
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Configure storage policy and indexer credentials
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: /etc/wazuh-storage.json
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+
+- name: Install cleanup service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/wazuh-storage.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Wazuh historical data retention and disk protection
+      After=network-online.target wazuh-indexer.service
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/wazuh-storage
+      User=root
+      UMask=0077
+      Nice=10
+      NoNewPrivileges=true
+      PrivateTmp=true
+      TimeoutStartSec=15min
+  notify: Reload storage timer
+
+- name: Install recurring cleanup timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/wazuh-storage.timer
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Check Wazuh storage every {{ wazuh_storage_interval }}
+      [Timer]
+      OnBootSec=5min
+      OnUnitInactiveSec={{ wazuh_storage_interval }}
+      Unit=wazuh-storage.service
+      [Install]
+      WantedBy=timers.target
+  notify: Reload storage timer
+
+- name: Remove superseded archive cron job
+  ansible.builtin.file:
+    path: /etc/cron.daily/wazuh-archive-retention
+    state: absent
+
+- name: Create journal configuration directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: '0755'
+
+- name: Bound system journal growth
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/wazuh-storage.conf
+    mode: '0644'
+    content: |
+      [Journal]
+      SystemMaxUse={{ wazuh_storage_journal_max_use }}
+      RuntimeMaxUse={{ wazuh_storage_journal_max_use }}
+      SystemKeepFree=2G
+  notify: Restart storage journal
+
+- name: Enable storage timer
+  ansible.builtin.systemd_service:
+    name: wazuh-storage.timer
+    enabled: true
+    state: started
+    daemon_reload: true

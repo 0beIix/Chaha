@@ -1,0 +1,7 @@
+---
+- name: Configure Wazuh AIO storage protection
+  hosts: aio
+  become: true
+  roles:
+    - role: wazuh-storage
+      tags: [wazuh-storage]

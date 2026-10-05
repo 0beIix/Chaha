@@ -1,0 +1,18 @@
+{{ {
+  'archive_days': wazuh_storage_archive_days | int,
+  'archive_min_days': wazuh_storage_archive_min_days | int,
+  'alert_days': wazuh_storage_alert_days | int,
+  'alert_min_days': wazuh_storage_alert_min_days | int,
+  'index_days': wazuh_storage_index_days | int,
+  'index_min_days': wazuh_storage_index_min_days | int,
+  'trigger': wazuh_storage_trigger | int,
+  'target': wazuh_storage_target | int,
+  'log_root': wazuh_storage_log_root,
+  'index_path': wazuh_storage_index_path,
+  'indexer': {
+    'url': wazuh_storage_indexer_url,
+    'ca': wazuh_storage_indexer_ca,
+    'username': wazuh_storage_indexer_username,
+    'password': wazuh_storage_indexer_password
+  }
+} | to_nice_json }}

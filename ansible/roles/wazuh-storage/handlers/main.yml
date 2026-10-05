@@ -1,0 +1,11 @@
+---
+- name: Reload storage timer
+  ansible.builtin.systemd_service:
+    name: wazuh-storage.timer
+    daemon_reload: true
+    state: restarted
+
+- name: Restart storage journal
+  ansible.builtin.systemd_service:
+    name: systemd-journald
+    state: restarted

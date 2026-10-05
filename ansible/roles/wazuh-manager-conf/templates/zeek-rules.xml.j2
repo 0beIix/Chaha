@@ -198,3 +198,18 @@
     <group>zeek_tls_configuration,</group>
   </rule>
 </group>
+<group name="zeek,chaha,zeek_dhcp,">
+  <!-- Independent branch: existing 100900 does not include dhcp.log. -->
+  <rule id="100950" level="3">
+    <decoded_as>json</decoded_as>
+    <location type="pcre2">/opt/zeek/logs/current/dhcp\.log$</location>
+    <field name="mac" type="pcre2">^.+$</field>
+    <description>Zeek DHCP: activity observed for MAC $(mac)</description>
+  </rule>
+  <rule id="100951" level="3">
+    <if_sid>100950</if_sid>
+    <field name="host_name" type="pcre2">^.+$</field>
+    <field name="assigned_addr" type="pcre2">^.+$</field>
+    <description>Zeek DHCP: name $(host_name), assigned IP $(assigned_addr), MAC $(mac)</description>
+  </rule>
+</group>
