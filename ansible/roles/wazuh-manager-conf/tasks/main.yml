@@ -17,14 +17,14 @@
     group: wazuh
     mode: "0750"
 
-- name: Deploy Zeek decoder
-  template:
-    src: "{{ zeek_decoder_template }}"
-    dest: "{{ wazuh_manager_ruleset_decoders_dir }}/{{ zeek_decoder_dest }}"
-    owner: root
-    group: wazuh
-    mode: "0640"
-  notify: restart wazuh-manager
+# - name: Deploy Zeek decoder
+#   template:
+#     src: "{{ zeek_decoder_template }}"
+#     dest: "{{ wazuh_manager_ruleset_decoders_dir }}/{{ zeek_decoder_dest }}"
+#     owner: root
+#     group: wazuh
+#     mode: "0640"
+#   notify: restart wazuh-manager
 
 - name: Deploy Zeek rules
   template:
