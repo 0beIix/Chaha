@@ -5,6 +5,10 @@ sniff_interface: "enp6s19"
 # Red a monitorear por Suricata
 home_net: "192.168.100.0/24"
 
+# Reglas Suricata 
+suricata_antiphishing_enabled: true
+suricata_daffainfo_enabled: true
+
 # Configuración de Zeek
 zeek_repo_channel: "security:/zeek"
 zeek_ubuntu_version: "xUbuntu_24.04"

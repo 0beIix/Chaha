@@ -1,0 +1,58 @@
+#!/bin/bash
+set -euo pipefail
+
+exec 9>/run/lock/chaha-suricata-update.lock
+flock -w 600 9
+
+config=/etc/suricata/suricata.yaml
+rules_dir=/var/lib/suricata/rules
+config_dump=$(suricata -c "$config" --dump-config)
+if ! grep -Eq "^rule-files\.[0-9]+ = $rules_dir/suricata\.rules$" <<<"$config_dump" &&
+   ! { grep -Fxq "default-rule-path = $rules_dir" <<<"$config_dump" &&
+       grep -Eq '^rule-files\.[0-9]+ = suricata\.rules$' <<<"$config_dump"; }; then
+    printf 'Se esperaba %s/suricata.rules entre los archivos de reglas de %s.\n' \
+        "$rules_dir" "$config" >&2
+    exit 1
+fi
+
+# El updater revierte los archivos si falla este test.
+test_command='"$SURICATA_PATH" -T --init-errors-fatal -c /etc/suricata/suricata.yaml'
+community_rules=()
+{% if suricata_antiphishing_enabled | bool %}
+community_rules+=({{ (antiphishing_dir ~ '/antiphishing.rules') | quote }})
+# El updater puede comentar reglas cuando no encuentra sus datasets.
+for sid in 6000000 6000001 6000002; do
+    test_command="(grep -Eq '^[[:space:]]*alert .*sid:[[:space:]]*${sid};' \"\$OUTPUT_FILENAME\" || { echo 'Antiphishing SID ${sid} missing from active rules' >&2; exit 1; }) && ${test_command}"
+done
+{% endif %}
+{% if suricata_daffainfo_enabled | bool %}
+{% for rule_file in suricata_daffainfo_files %}
+community_rules+=({{ (daffainfo_dir ~ '/' ~ rule_file) | quote }})
+{% endfor %}
+{% endif %}
+
+update_args=(--suricata-conf "$config" --output "$rules_dir"
+    --no-reload --force --test-command "$test_command")
+for rule_file in "${community_rules[@]}"; do
+    if [[ ! -s "$rule_file" ]]; then
+        printf 'No se puede cargar el archivo de reglas %s.\n' "$rule_file" >&2
+        exit 1
+    fi
+    update_args+=(--local "$rule_file")
+done
+had_rules=false
+if [[ -f "$rules_dir/suricata.rules" ]]; then
+    had_rules=true
+fi
+if ! suricata-update "${update_args[@]}"; then
+    if [[ $had_rules == false ]]; then
+        rm -f -- "$rules_dir/suricata.rules"
+    fi
+    exit 1
+fi
+
+if [[ ${1:-} == --restart ]]; then
+    systemctl restart suricata
+elif systemctl is-active --quiet suricata; then
+    suricatasc -c reload-rules
+fi

@@ -3,15 +3,11 @@
   apt:
     name: 
       - suricata
+      - suricata-update
       - jq
       - python3-pip
     state: present
     update_cache: yes
-
-- name: Detener Suricata para configurar
-  service:
-    name: suricata
-    state: stopped
 
 - name: Optimizar Interfaz de Monitoreo (Desactivar Offloading)
   shell: |
@@ -25,7 +21,7 @@
   # Esto asegura que Suricata vea los paquetes originales, no "reensamblados" por la NIC.
 
 ### Configuración de Suricata
-- name: Configurerar HOME_NET
+- name: Configurar HOME_NET
   replace:
     path: /etc/suricata/suricata.yaml
     regexp: 'HOME_NET: "\[[^"]+\]"'
@@ -37,10 +33,26 @@
     regexp: 'interface: .+'
     replace: 'interface: {{ sniff_interface }}'
 
-- name: Actualizar reglas de Suricata (ET Open)
-  command: suricata-update
-  register: update_result
-  changed_when: "'No changes' not in update_result.stdout"
+- name: Preparar fuentes de reglas y actualizar Suricata
+  vars:
+    antiphishing_dir: "/var/lib/chaha/suricata/antiphishing/{{ suricata_antiphishing_commit }}"
+    daffainfo_dir: "/var/lib/chaha/suricata/daffainfo/{{ suricata_daffainfo_commit }}"
+  block:
+    - name: Preparar reglas comunitarias
+      ansible.builtin.import_tasks: community-rules.yml
+
+    - name: Instalar el actualizador de reglas de Chahã
+      ansible.builtin.template:
+        src: chaha-suricata-update.sh.j2
+        dest: /usr/local/sbin/chaha-suricata-update
+        owner: root
+        group: root
+        mode: "0755"
+        validate: /bin/bash -n %s
+
+    - name: Actualizar y validar las reglas antes de reiniciar Suricata
+      ansible.builtin.command: /usr/local/sbin/chaha-suricata-update --restart
+      changed_when: true
 
 - name: Programar actualización diaria de reglas Suricata a las 05:00
   cron:
@@ -48,7 +60,7 @@
     minute: "0"
     hour: "5"
     user: root
-    job: "/usr/bin/suricata-update >/var/log/suricata-update.log 2>&1"
+    job: "/usr/local/sbin/chaha-suricata-update >/var/log/suricata-update.log 2>&1"
     state: present
 
 - name: Asegurar que Suricata inicie al boot

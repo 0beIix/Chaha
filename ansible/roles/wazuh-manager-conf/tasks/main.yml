@@ -35,6 +35,12 @@
     mode: "0640"
   notify: restart wazuh-manager
 
+- name: Maintain Zeek ingest pipeline
+  ansible.builtin.import_tasks: zeek-pipeline.yml
+  when: wazuh_zeek_pipeline_enabled | default(false) | bool
+  tags:
+    - wazuh-zeek-pipeline
+
 - name: Validate Wazuh manager configuration
   command: /var/ossec/bin/wazuh-analysisd -t
   changed_when: false

@@ -1,0 +1,28 @@
+# Network-based attacks
+
+alert tcp any any -> any any (msg:"Nmap Stealth Scan Detected"; flags:S; threshold: type threshold, track by_src, count 5, seconds 10; sid:100001;)
+alert icmp any any -> any any (msg:"Nmap OS Fingerprinting Detected"; ttl: 64; content:"ECHO REQUEST"; sid:100002;)   
+alert icmp any any -> any any (msg:"Nmap OS Fingerprinting Detected"; ttl: 128; content:"ECHO REPLY"; sid:100003;)
+alert tcp any any -> any any (msg:"Nmap Service Version Detection Probe Detected"; content:"GET"; http_method; sid:100004;)
+alert tcp any any -> any any (msg:"Nmap Service Version Detection Probe Detected"; flags:SA; sid:100005;)
+alert tcp any any -> any any (msg:"Metasploit Exploit Payload Detected"; content:"<metasploit_payload>"; sid:100006;)
+alert tcp any any -> <attacker_ip> any (msg:"Metasploit Reverse Shell Connection Detected"; sid:100007;)
+alert tcp any any -> any any (msg:"Meterpreter Communication Detected"; content:"<meterpreter_payload>"; sid:100008;)
+alert tcp any any -> any any (msg:"Metasploit Credential Harvesting Activity Detected"; content:"LDAP" content:"SMB"; sid:100009;)
+
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"LOCAL DOS SYN packet flood inbound, Potential DOS"; flow:to_server; flags: S,12; threshold: type both, track by_dst, count 5000, seconds 5; classtype:misc-activity; sid:5;)
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"LOCAL DOS SYN packet flood outbound, Potential DOS"; flow:to_server; flags: S,12; threshold: type both, track by_dst, count 5000, seconds 5; classtype:misc-activity; sid:6;)
+
+
+# Web-based attacks
+
+alert http any any -> any any (msg:"Web Server Enumeration Attempt Detected"; urilen:>100; threshold: type threshold, track by_src, count 10, seconds 60; sid:100010;)
+alert http any any -> any any (msg:"Web Application Vulnerability Scan Detected"; content:"SQL Injection" content:"XSS"; sid:100011;)
+alert http any any -> any any (msg:"Metasploit Web Application Exploitation Attempt Detected"; content:"<exploit_payload>"; sid:100012;)
+alert http any any -> any any (msg:"Metasploit Command Injection Attempt Detected"; content:";"; sid:100013;)
+alert http any any -> any any (msg:"Metasploit Directory Traversal Attempt Detected"; content:"../"; sid:100014;)
+alert http any any -> any any (msg:"Metasploit XSS Attack Detected"; content:"<script>"; sid:100015;)
+alert http any any -> any any (msg:"Metasploit SQL Injection Attempt Detected"; content:"SQL Error"; sid:100016;)
+alert http any any -> any any (msg:"Metasploit File Inclusion Attempt Detected"; content:"../../"; sid:100017;)
+alert http any any -> any any (msg:"Metasploit CSRF Attack Detected"; content:"CSRF Token"; sid:100018;)
+alert http any any -> any any (msg:"Metasploit Authentication Bypass Attempt Detected"; content:"Admin=true"; sid:100019;)

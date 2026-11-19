@@ -30,8 +30,23 @@ wazuh_indexer_nodes:
 wazuh_manager_ruleset_decoders_dir: "/var/ossec/etc/decoders"
 wazuh_manager_ruleset_rules_dir: "/var/ossec/etc/rules"
 
-zeek_decoder_template: "zeek-decoder.xml.j2"
-zeek_rules_template: "zeek-rules.xml.j2"
-
 zeek_decoder_dest: "zeek-decoder.xml"
 zeek_rules_dest: "zeek-rules.xml"
+
+# pipeline configuration
+wazuh_zeek_pipeline_enabled: true
+wazuh_alerts_pipeline_id: "filebeat-7.10.2-wazuh-alerts-pipeline"
+wazuh_zeek_connection_field: "data.zeek_connection"
+
+# Requests run ON the managed Wazuh host. Use a name matching its TLS certificate.
+wazuh_pipeline_indexer_url: https://127.0.0.1:9200
+wazuh_pipeline_validate_certs: false
+wazuh_pipeline_ca_path: /etc/filebeat/certs/root-ca.pem
+wazuh_pipeline_username: admin
+wazuh_pipeline_password: "{{ indexer_admin_password }}"
+# Set the vault variable in your encrypted inventory, or reference your existing secret.
+# If your local test installation cannot validate TLS, explicitly set
+# wazuh_pipeline_validate_certs: false (same tradeoff as curl -k).
+wazuh_pipeline_retries: 12
+wazuh_pipeline_retry_delay: 5
+wazuh_pipeline_backup_dir: /var/backups/wazuh-ingest

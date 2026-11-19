@@ -1,0 +1,156 @@
+---
+- name: Explain check-mode behavior
+  ansible.builtin.debug:
+    msg: Pipeline API tasks are skipped in check mode. Run normally to simulate, back up and reconcile.
+  when: ansible_check_mode
+- name: Reconcile the Zeek pipeline on the Wazuh host
+  become: true
+  when: not ansible_check_mode
+  no_log: true
+  module_defaults:
+    ansible.builtin.uri:
+      url_username: '{{ wazuh_pipeline_username }}'
+      url_password: '{{ wazuh_pipeline_password }}'
+      force_basic_auth: true
+      validate_certs: '{{ wazuh_pipeline_validate_certs }}'
+      ca_path: '{{ wazuh_pipeline_ca_path | default(omit, true) }}'
+      use_proxy: false
+      timeout: 30
+  block:
+  - name: Wait for the existing Filebeat alerts pipeline
+    ansible.builtin.uri:
+      url: '{{ wazuh_pipeline_indexer_url }}/_ingest/pipeline/{{ wazuh_alerts_pipeline_id }}'
+      method: GET
+      status_code:
+      - 200
+      - 404
+      return_content: true
+    register: _zp_get
+    until: (_zp_get.status | default(0)) == 200
+    retries: '{{ wazuh_pipeline_retries }}'
+    delay: '{{ wazuh_pipeline_retry_delay }}'
+    changed_when: false
+  - name: Keep the complete original pipeline
+    ansible.builtin.set_fact:
+      _zp_original: '{{ _zp_get.json[wazuh_alerts_pipeline_id] }}'
+      _zp_rest: []
+  - name: Require the known JSON-first pipeline layout
+    ansible.builtin.assert:
+      that:
+      - _zp_original.processors | length > 0
+      - (_zp_original.processors[0].json | default({})).get('field') == 'message'
+      - (_zp_original.processors[0].json | default({})).get('add_to_root', false) | bool
+      - wazuh_zeek_connection_field == 'data.zeek_connection'
+      fail_msg: Unexpected pipeline layout or destination. Inspect before modifying.
+  - name: Preserve processors except previous Zeek connection renames
+    ansible.builtin.set_fact:
+      _zp_rest: '{{ _zp_rest + [item] }}'
+    loop: '{{ _zp_original.processors[1:] }}'
+    when: not (item.rename is defined and item.rename.field | default('') == 'data.id' and item.rename.target_field
+      | default('') == wazuh_zeek_connection_field and 'zeek' in (item.rename['if'] | default('')))
+  - name: Build candidate without replacing upstream processors
+    ansible.builtin.set_fact:
+      _zp_rename:
+        rename:
+          if: ctx.rule != null && ctx.rule.groups != null && ctx.rule.groups.contains('zeek') && ctx.data != null
+            && ctx.data.id instanceof Map
+          field: data.id
+          target_field: '{{ wazuh_zeek_connection_field }}'
+          ignore_missing: true
+  - name: Combine candidate with original metadata and failure handling
+    ansible.builtin.set_fact:
+      _zp_candidate: '{{ _zp_original | combine({''processors'': [_zp_original.processors[0], _zp_rename] + _zp_rest})
+        }}'
+  - name: Simulate connection, notice and non-Zeek events before applying
+    ansible.builtin.uri:
+      url: '{{ wazuh_pipeline_indexer_url }}/_ingest/pipeline/_simulate'
+      method: POST
+      body_format: json
+      body:
+        pipeline: '{{ _zp_candidate }}'
+        docs:
+        - _source:
+            message: '{"timestamp": "2026-10-06T18:00:00.000+0000", "rule": {"groups": ["zeek"]}, "data": {"id":
+              {"orig_h": "192.0.2.1", "resp_h": "198.51.100.1", "orig_p": "12345", "resp_p": "443"}}}'
+            fields:
+              index_prefix: wazuh-alerts-4.x-
+        - _source:
+            message: '{"timestamp": "2026-10-06T18:00:00.000+0000", "rule": {"groups": ["zeek"]}, "data": {"note":
+              "CaptureLoss::Too_Much_Loss"}}'
+            fields:
+              index_prefix: wazuh-alerts-4.x-
+        - _source:
+            message: '{"timestamp": "2026-10-06T18:00:00.000+0000", "rule": {"groups": ["suricata"]}, "data": {"id":
+              "unchanged", "event_type": "alert"}}'
+            fields:
+              index_prefix: wazuh-alerts-4.x-
+      status_code: 200
+    register: _zp_sim
+    changed_when: false
+  - name: Require all simulations to survive pipeline failure handling
+    ansible.builtin.assert:
+      that:
+      - item.doc is defined
+      - item.error is not defined
+      fail_msg: Simulation failed or dropped a document; pipeline was not modified.
+    loop: '{{ _zp_sim.json.docs }}'
+  - name: Verify rename and isolation
+    ansible.builtin.assert:
+      that:
+      - _zp_sim.json.docs[0].doc._source.data.zeek_connection.orig_h == '192.0.2.1'
+      - '''id'' not in _zp_sim.json.docs[0].doc._source.data'
+      - _zp_sim.json.docs[1].doc._source.data.note == 'CaptureLoss::Too_Much_Loss'
+      - _zp_sim.json.docs[2].doc._source.data.id == 'unchanged'
+  - name: Create restricted backup directory
+    ansible.builtin.file:
+      path: '{{ wazuh_pipeline_backup_dir }}'
+      state: directory
+      owner: root
+      group: root
+      mode: '0700'
+    when: _zp_candidate != _zp_original
+  - name: Back up the original pipeline body before modification
+    ansible.builtin.copy:
+      content: '{{ _zp_original | to_nice_json }}'
+      dest: '{{ wazuh_pipeline_backup_dir }}/{{ wazuh_alerts_pipeline_id }}-{{ (_zp_original | to_json) | hash(''sha256'')
+        }}.json'
+      owner: root
+      group: root
+      mode: '0600'
+      force: false
+    when: _zp_candidate != _zp_original
+  - name: Recheck pipeline to avoid overwriting concurrent changes
+    ansible.builtin.uri:
+      url: '{{ wazuh_pipeline_indexer_url }}/_ingest/pipeline/{{ wazuh_alerts_pipeline_id }}'
+      method: GET
+      status_code: 200
+    register: _zp_before_put
+    changed_when: false
+    when: _zp_candidate != _zp_original
+  - name: Stop if another process changed the pipeline
+    ansible.builtin.assert:
+      that:
+      - _zp_before_put.json[wazuh_alerts_pipeline_id] == _zp_original
+      fail_msg: Pipeline changed concurrently. Rerun after setup finishes.
+    when: _zp_candidate != _zp_original
+  - name: Apply the candidate only when different
+    ansible.builtin.uri:
+      url: '{{ wazuh_pipeline_indexer_url }}/_ingest/pipeline/{{ wazuh_alerts_pipeline_id }}'
+      method: PUT
+      body_format: json
+      body: '{{ _zp_candidate }}'
+      status_code: 200
+    register: _zp_put
+    changed_when: true
+    when: _zp_candidate != _zp_original
+  - name: Read back installed pipeline
+    ansible.builtin.uri:
+      url: '{{ wazuh_pipeline_indexer_url }}/_ingest/pipeline/{{ wazuh_alerts_pipeline_id }}'
+      method: GET
+      status_code: 200
+    register: _zp_verify
+    changed_when: false
+  - name: Verify installed content
+    ansible.builtin.assert:
+      that:
+      - _zp_verify.json[wazuh_alerts_pipeline_id] == _zp_candidate

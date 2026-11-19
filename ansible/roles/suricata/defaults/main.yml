@@ -1,0 +1,14 @@
+---
+# Activar cada fuente por separado para medir su impacto en el sensor.
+suricata_antiphishing_enabled: false
+suricata_antiphishing_commit: 849206197ce46a7f63ba289a8e666bcff794f3d5
+suricata_antiphishing_sha256:
+  antiphishing.rules: 09e60151c2d8db7d70f5ff5cac3b7ce3bee6bad0b1ebccc8591dceab9ad1726b
+  phishing.lst: 2f5a64e4ccca41d09155ec9abf60889101a7835739e2b4214c30f9453ef03b77
+  phishing_ips.lst: d081f4d65439e60c3d732db10a5ba38bfc1d4ffe9cca8d35efd13eff652512d3
+
+suricata_daffainfo_enabled: false
+suricata_daffainfo_commit: 23bfba7e688fdf5fadd8e378f070dae843e14263
+suricata_daffainfo_files:
+  - http/web-attacks/cross-site-scripting.rules
+  - http/web-attacks/sql-injection.rules

@@ -1,0 +1,40 @@
+---
+- name: Preparar directorio para las reglas y datasets de Antiphishing
+  ansible.builtin.file:
+    path: "{{ antiphishing_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: suricata_antiphishing_enabled | bool
+
+- name: Descargar los tres archivos de la revisión de Antiphishing
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/julioliraup/Antiphishing/{{ suricata_antiphishing_commit }}/{{ item.key }}"
+    dest: "{{ antiphishing_dir }}/{{ item.key }}"
+    checksum: "sha256:{{ item.value }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ suricata_antiphishing_sha256 | dict2items }}"
+  when: suricata_antiphishing_enabled | bool
+
+- name: Preparar directorios de las reglas seleccionadas de daffainfo
+  ansible.builtin.file:
+    path: "{{ daffainfo_dir }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ suricata_daffainfo_files | map('dirname') | unique | list }}"
+  when: suricata_daffainfo_enabled | bool
+
+- name: Descargar las reglas seleccionadas de daffainfo
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/daffainfo/suricata-rules/{{ suricata_daffainfo_commit }}/{{ item }}"
+    dest: "{{ daffainfo_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ suricata_daffainfo_files }}"
+  when: suricata_daffainfo_enabled | bool

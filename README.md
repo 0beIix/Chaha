@@ -94,3 +94,7 @@ ansible -i inventory/hosts.ini all -m ping
 # Ejecutar instalación
 ansible-playbook -i inventory/hosts.ini site.yml
 ```
+
+### Reglas adicionales de Suricata
+
+La [guía de reglas comunitarias](ansible/roles/suricata/README.md) explica cómo probar e integrar Antiphishing y las reglas HTTP de daffainfo en el sensor.
